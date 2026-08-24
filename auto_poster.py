@@ -11,16 +11,16 @@ client = genai.Client(api_key=GEMINI_API_KEY)
 
 def generate_post():
     topics = [
-        "Cryptocurrency and Real World Assets (RWA)",
-        "Dividend ETFs for long-term passive income",
-        "AI and Tech Stocks: Next big opportunities",
-        "Macroeconomics: Federal Reserve and interest rates impact on crypto",
-        "Personal finance tips for high-income earners"
+        "Everyday life hacks and time-saving tips",
+        "Top 5 cost-effective household items you must have",
+        "Kitchen organization and cleaning hacks",
+        "Smart shopping: How to spot the best deals online",
+        "Home interior and DIY improvements for small spaces"
     ]
     topic = random.choice(topics)
     
-    prompt = f"""You are a professional financial blogger.
-Write a highly engaging, SEO-optimized blog post in English about: {topic}.
+    prompt = f"""You are a friendly lifestyle and life-hacks blogger.
+Write a highly engaging, SEO-optimized blog post in Korean about: {topic}.
 Include a catchy title, introduction, 3-4 main points with subheadings (##), and a conclusion.
 Make sure the content is formatting in Markdown.
 Important: The very first line of your response MUST be the exact title of the post, starting with 'Title: '. Do not use markdown formatting for the title line.
@@ -34,7 +34,7 @@ The rest of the response should be the body of the post.
     
     text = response.text.strip()
     lines = text.split('\n')
-    title = "Finance Update"
+    title = "Life Tips Update"
     body = text
     
     if lines and lines[0].lower().startswith("title:"):
@@ -59,7 +59,7 @@ def save_post(title, body):
 layout: post
 title: "{title}"
 date: {time_str}
-categories: [Finance]
+categories: [Life]
 ---
 
 {body}
