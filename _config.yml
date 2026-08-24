@@ -2,7 +2,7 @@ title: Life Tips
 description: 일상을 바꾸는 꿀팁과 가성비 최고 꿀템 추천.
 url: 'https://somsoo.github.io/coupang-blog'
 baseurl: ''
-theme: jekyll-theme-minima
+theme: minima
 permalink: /:year/:month/:day/:title/
 plugins:
   - jekyll-feed
