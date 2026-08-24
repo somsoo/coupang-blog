@@ -99,7 +99,7 @@ The rest of the response should be the body of the post in standard Markdown for
     eval_prompt = f"""You are a master Editor. Review the draft:
 {text}
 
-Evaluate on SEO/AEO/GEO. If below 285/300, completely REWRITE it.
+Evaluate on SEO/AEO/GEO. If the score is below 285/300, logically MODIFY and REFINE the draft to improve the score. Do NOT rewrite from scratch. Enhance the vocabulary, headings, and keyword density while strictly preserving the original length, markdown structure, and any HTML tags.
 CRITICAL: Maintain the 'Title: ...' at the very first line.
 CRITICAL: Do NOT remove or modify the raw HTML `<div>` blocks containing the soft-sell buttons. Ensure there are exactly two button HTML blocks in the text.
 The rest of the response should be the heavily revised body of the post in standard Markdown format."""
