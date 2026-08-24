@@ -123,7 +123,31 @@ The rest of the response should be the heavily revised body of the post in stand
     else:
         body = text
         
+
+    ad_top = '''
+<div class="manual-ad-container" style="margin: 25px 0; text-align: center;">
+    <ins class="adsbygoogle"
+         style="display:block"
+         data-ad-client="ca-pub-2228289204702106"
+         data-ad-slot="9807209388"
+         data-ad-format="auto"
+         data-full-width-responsive="true"></ins>
+    <script>(adsbygoogle = window.adsbygoogle || []).push({});</script>
+</div>'''
+    ad_bottom = '''
+<div class="manual-ad-container" style="margin: 35px 0 10px 0; text-align: center;">
+    <ins class="adsbygoogle"
+         style="display:block"
+         data-ad-client="ca-pub-2228289204702106"
+         data-ad-slot="1633205896"
+         data-ad-format="auto"
+         data-full-width-responsive="true"></ins>
+    <script>(adsbygoogle = window.adsbygoogle || []).push({});</script>
+</div>'''
+
+    body = ad_top + "\n" + body + "\n" + ad_bottom
     return title, body
+
 
 def save_post(title, body):
     now = datetime.utcnow()
