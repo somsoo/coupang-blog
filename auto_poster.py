@@ -19,13 +19,19 @@ def generate_post():
     ]
     topic = random.choice(topics)
     
-    prompt = f"""You are a friendly lifestyle and life-hacks blogger.
-Write a highly engaging, SEO-optimized blog post in Korean about: {topic}.
-Include a catchy title, introduction, 3-4 main points with subheadings (##), and a conclusion.
-Make sure the content is formatting in Markdown.
+        prompt = f"""당신은 친근한 한국인 라이프스타일/생활꿀팁 전문 SEO 마케터이자 블로거입니다.
+
+다음 주제에 대해 SEO/AEO/GEO 최적화된 매력적인 블로그 포스팅을 한글로 작성해주세요: {topic}
+
+작성 지침:
+1. 분량: 1000자 이상, 상세하고 유용한 정보 제공.
+2. 구조: H2, H3 태그를 활용한 소제목 분할, 가독성 높은 문단 구조, 핵심 요약(Bullet points), 결론.
+3. SEO/AEO/GEO: 독자의 검색 의도와 질문에 직접적으로 답변하는 형태(AEO)를 취하고, 자연스럽게 키워드를 배치하세요.
+4. 어조: 친구에게 꿀팁을 전수하듯 자연스럽고 친근한 인간적인 말투 (로봇 같은 딱딱한 말투 절대 금지). 공감과 경험을 바탕으로 한 스토리텔링 기법 적용.
+5. 중간중간 상품 추천이나 클릭 유도를 위한 자연스러운 맥락(CTA)을 반드시 포함하세요.
+
 Important: The very first line of your response MUST be the exact title of the post, starting with 'Title: '. Do not use markdown formatting for the title line.
-The rest of the response should be the body of the post.
-"""
+The rest of the response should be the body of the post in standard Markdown format."""
 
     models_to_try = ['gemini-3.5-flash-lite', 'gemini-3.1-flash-lite']
     response = None
