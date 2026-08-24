@@ -9,7 +9,6 @@ import requests
 import json
 import urllib.parse
 import xml.etree.ElementTree as ET
-import re
 
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
 COUPANG_ACCESS_KEY = "d3f6de56-bd4a-4282-823f-a2d5f7a1898f"
@@ -60,6 +59,18 @@ def get_trending_keywords():
 def generate_post():
     trends = get_trending_keywords()
     
+    # 먼저 트렌드 키워드 중 하나를 골라 상품을 검색합니다.
+    product = search_coupang_product(trends.split(",")[0] if trends else "가성비템")
+    
+    product_url = product.get('productUrl', '#') if product else '#'
+    
+    button_html = f'''
+<div style="text-align: center; margin: 35px 0;">
+  <a href="{product_url}" rel="nofollow noopener" style="background-color: #f8f9fa; color: #111; padding: 16px 32px; text-decoration: none; font-size: 18px; font-weight: bold; border-radius: 8px; display: inline-block; border: 1px solid #ced4da; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">👉 [버튼 문구]</a>
+  <p style="font-size: 0.8em; color: #999; margin-top: 10px;">이 포스팅은 쿠팡 파트너스 활동의 일환으로, 이에 따른 일정액의 수수료를 제공받습니다.</p>
+</div>
+'''
+
     prompt = f"""당신은 '라이프해킹' 생존 꿀팁 전문 블로거입니다.
 다음 실시간 트렌드 키워드 중 하나를 골라, 실생활 꿀팁과 엮어 매력적인 블로그 포스팅을 한글로 작성해주세요:
 [현재 트렌드]: {trends}
@@ -67,10 +78,9 @@ def generate_post():
 작성 지침:
 1. 분량: 1000자 이상.
 2. H2, H3 소제목 사용, 중요한 문장은 굵게(Bold) 처리.
-3. [버튼 삽입 규칙 - CRITICAL]: 글 중간(해결책 제시 직후)과 글 맨 마지막 요약 뒤, 총 2곳에 [COUPANG_AD: 버튼문구] 형식으로 텍스트를 삽입하세요.
-   * 주의: '최저가 확인하기', '상품 보러가기' 같이 노골적인 판매 문구는 절대 금지!
-   * 올바른 예시: [COUPANG_AD: 👉 우리집 수압에 맞는 필터 찾아보기], [COUPANG_AD: 👉 누전 차단되는 멀티탭 스펙 비교하기]
-   (독자의 호기심을 유발하는 부드러운 '소프트 셀링' 문구를 문맥에 맞게 창작해서 적어주세요.)
+3. 소프트셀링 버튼 삽입: 글의 중간(해결책 제시 직후)과 글 맨 마지막 요약 뒤, **총 2곳**에 아래의 링크 박스 HTML을 직접 삽입하세요.
+   단 HTML 코드 안의 [버튼 문구] 부분을 지우고, 문맥에 맞게 호기심을 유발하는 부드러운 정보성 문구(예: '👉 우리집 수압에 맞는 필터 찾아보기', '👉 누전 차단되는 멀티탭 스펙 비교하기')로 직접 작성해서 채워넣어주세요.
+{button_html}
 
 Important: The very first line of your response MUST be the exact title of the post, starting with 'Title: '. Do not use markdown formatting for the title line.
 The rest of the response should be the body of the post in standard Markdown format."""
@@ -91,7 +101,8 @@ The rest of the response should be the body of the post in standard Markdown for
 
 Evaluate on SEO/AEO/GEO. If below 285/300, completely REWRITE it.
 CRITICAL: Maintain the 'Title: ...' at the very first line.
-CRITICAL: Do NOT remove the [COUPANG_AD: ...] soft-sell button placeholders. Make sure there are exactly two."""
+CRITICAL: Do NOT remove or modify the raw HTML `<div>` blocks containing the soft-sell buttons. Ensure there are exactly two button HTML blocks in the text.
+The rest of the response should be the heavily revised body of the post in standard Markdown format."""
 
     revised_response = None
     for model_name in models_to_try:
@@ -112,20 +123,6 @@ CRITICAL: Do NOT remove the [COUPANG_AD: ...] soft-sell button placeholders. Mak
     else:
         body = text
         
-    product = search_coupang_product(title.split()[0] if title else "가성비템")
-    
-    def replace_ad(match):
-        button_text = match.group(1).strip()
-        if product:
-            return f'''
-<div style="text-align: center; margin: 35px 0;">
-  <a href="{product.get('productUrl')}" rel="nofollow noopener" style="background-color: #f8f9fa; color: #111; padding: 16px 32px; text-decoration: none; font-size: 18px; font-weight: bold; border-radius: 8px; display: inline-block; border: 1px solid #ced4da; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">{button_text}</a>
-  <p style="font-size: 0.8em; color: #999; margin-top: 10px;">이 포스팅은 쿠팡 파트너스 활동의 일환으로, 이에 따른 일정액의 수수료를 제공받습니다.</p>
-</div>
-'''
-        return ""
-        
-    body = re.sub(r'\[COUPANG_AD:\s*(.*?)\]', replace_ad, body)
     return title, body
 
 def save_post(title, body):
