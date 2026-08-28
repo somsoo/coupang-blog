@@ -5,6 +5,7 @@ date: 2026-08-24T06:00:29
 categories: []
 ---
 
+![집중의 깊이가 달라지는 책상, 무소음 마우스로 완성하는 완벽한 몰입의 로](https://image.pollinations.ai/prompt/A%20realistic%20photograph%20of%20%EC%A7%91%EC%A4%91%EC%9D%98%20%EA%B9%8A%EC%9D%B4%EA%B0%80%20%EB%8B%AC%EB%9D%BC%EC%A7%80%EB%8A%94%20%EC%B1%85%EC%83%81%2C%20%EB%AC%B4%EC%86%8C%EC%9D%8C%20%EB%A7%88%EC%9A%B0%EC%8A%A4%EB%A1%9C%20%EC%99%84%EC%84%B1%ED%95%98%EB%8A%94%20%EC%99%84%EB%B2%BD%ED%95%9C%20%EB%AA%B0%EC%9E%85%EC%9D%98%20%EB%A1%9C%20on%20a%20clean%20desk%2C%20bright%20natural%20lighting%2C%20simple%20and%20clear?width=800&height=800&nologo=true&private=true&model=flux)
 
 <div class="manual-ad-container" style="margin: 25px 0; text-align: center;">
     <ins class="adsbygoogle" style="display:block" data-ad-client="ca-pub-2228289204702106" data-ad-slot="9807209388" data-ad-format="auto" data-full-width-responsive="true"></ins>
