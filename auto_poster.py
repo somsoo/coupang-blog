@@ -135,7 +135,16 @@ def generate_post():
 </div>
 '''
 
-    image_markdown = f"![{product_name}]({product_image})\n\n" if product_image else ""
+
+    if product_image:
+        image_markdown = f"![{product_name}]({product_image})\n\n"
+    else:
+        # 쿠팡 이미지 없을 때 Pollinations AI 이미지 자동 생성 (fallback)
+        obj_prompt = urllib.parse.quote(
+            f"A realistic photograph of {best_keyword} product on a clean desk, bright natural lighting, simple and clear"
+        )
+        pollinations_url = f"https://image.pollinations.ai/prompt/{obj_prompt}?width=800&height=800&nologo=true&private=true&model=flux"
+        image_markdown = f"![{product_name}]({pollinations_url})\n\n"
 
     # [Pass 1: 초안 작성]
     draft_prompt = f"""당신은 '내돈내산' 리뷰 전문가입니다.
@@ -145,7 +154,8 @@ def generate_post():
 [상품명]: {product_name}
 
 지침:
-- H2, H3 제목을 적절히 사용하세요.
+- 소제목은 반드시 마크다운 문법(## 소제목, ### 하위소제목)만 사용하세요.
+- 절대로 'H2', 'H3', '## H2.', '### H3.' 처럼 H숫자 글자를 제목 앞에 붙이지 마세요.
 - 실제 사용해본 것처럼 솔직한 장단점을 적어주세요.
 """
     draft_content = generate_with_retry(draft_prompt).strip()
@@ -179,7 +189,21 @@ def generate_post():
 글 서론과 결론 부근에 다음 버튼 HTML 태그를 그대로 2회 삽입하세요.
 단, HTML 내의 [DYNAMIC_BUTTON_TEXT] 부분을 지우고, 문맥에 맞게 호기심을 유발하는 부드러운 정보성 문구(예: '이 유리창 청소기 수압에 맞는 필터 찾아보기', '이 안전 차단되는 멀티탭 스펙 비교하기')를 직접 작성해서 덮어씌우세요. 단순한 '구매하기'는 안 됩니다.
 {button_html}
+
+[시각적 강조 규칙 - 반드시 사용]
+글 전체에서 최소 2회 이상, 독자에게 꼭 전달해야 할 핵심 정보(예: 가격 팁, 주의사항, 구매 포인트)를 아래 HTML 박스 중 선택해서 감싸세요.
+
+노란 하이라이트 박스 (꿀팁, 추천 포인트):
+<div style="background:#fffbe6; border-left:4px solid #f5c518; padding:14px 18px; margin:20px 0; border-radius:6px; font-size:0.97em;">
+💡 <strong>여기에 핵심 꿀팁 내용 작성</strong>
+</div>
+
+파란 정보 박스 (스펙, 수치, 비교 정보):
+<div style="background:#e8f4fd; border-left:4px solid #2196F3; padding:14px 18px; margin:20px 0; border-radius:6px; font-size:0.97em;">
+📌 <strong>여기에 스펙/수치 정보 작성</strong>
+</div>
 """
+
     
     final_text = generate_with_retry(rewrite_prompt).strip()
 
