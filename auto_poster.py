@@ -1,5 +1,19 @@
 import os
 import random
+
+import requests
+def download_vibe_image(keywords, filename):
+    url = f"https://loremflickr.com/800/500/{keywords}/all"
+    try:
+        r = requests.get(url, timeout=10, allow_redirects=True)
+        os.makedirs('assets/images', exist_ok=True)
+        filepath = f'assets/images/{filename}.jpg'
+        with open(filepath, 'wb') as f:
+            f.write(r.content)
+        return filepath
+    except:
+        return ""
+
 from datetime import datetime, timedelta
 import urllib.request
 import google.generativeai as genai
@@ -11,6 +25,20 @@ import json
 import urllib.parse
 from PIL import Image, ImageDraw, ImageFont
 import random
+
+import requests
+def download_vibe_image(keywords, filename):
+    url = f"https://loremflickr.com/800/500/{keywords}/all"
+    try:
+        r = requests.get(url, timeout=10, allow_redirects=True)
+        os.makedirs('assets/images', exist_ok=True)
+        filepath = f'assets/images/{filename}.jpg'
+        with open(filepath, 'wb') as f:
+            f.write(r.content)
+        return filepath
+    except:
+        return ""
+
 
 import xml.etree.ElementTree as ET
 
@@ -161,7 +189,7 @@ def create_text_thumbnail(keyword, filename):
     os.makedirs('assets/images', exist_ok=True)
     filepath = f'assets/images/{filename}.webp'
     img.save(filepath, 'WEBP', quality=90)
-    return f'/{filepath}'
+    return filepath
 
 def generate_post():
     trends = get_trending_keywords()
@@ -181,12 +209,15 @@ def generate_post():
 '''
 
 
-    # [1] 최상단 텍스트 썸네일 자동 생성 및 삽입
-    thumb_filename = f"thumb_{int(time.time())}"
-    thumb_url = create_text_thumbnail(best_keyword, thumb_filename)
-    image_markdown = f"![{product_name}]({thumb_url})\n\n"
 
-    # [2] 본문 중간용 감성 실사 사진 (Flickr) 키워드 추출
+    # [1] 최상단 텍스트 썸네일 생성
+    thumb_filename = f"thumb_{int(time.time())}"
+    thumb_rel_path = create_text_thumbnail(best_keyword, thumb_filename)
+    image_markdown = f"![{product_name}]({{{{ '/' | append: '{thumb_rel_path}' | relative_url }}}})
+
+"
+
+    # [2] 본문 중간용 감성 실사 사진 다운로드 (1장만)
     vibe_prompt = f"""
 Translate the following product keyword into 2 English keywords that represent a clean, aesthetic lifestyle or interior mood.
 Example: '샤워기 필터' -> 'bathroom,clean'
@@ -199,10 +230,13 @@ Keyword: {best_keyword}
         vibe_keywords = generate_with_retry(vibe_prompt).strip()
     except:
         vibe_keywords = "interior,clean"
-    
-    # 캐시 방지를 위해 lock 값 부여
-    flickr_url_1 = f"https://loremflickr.com/800/500/{vibe_keywords}/all?lock=1"
-    flickr_url_2 = f"https://loremflickr.com/800/500/{vibe_keywords}/all?lock=2"
+        
+    vibe_rel_path = download_vibe_image(vibe_keywords, f"vibe_{int(time.time())}")
+    if vibe_rel_path:
+        vibe_markdown = f"![감성사진]({{{{ '/' | append: '{vibe_rel_path}' | relative_url }}}})"
+    else:
+        vibe_markdown = ""
+
 
 
 
@@ -257,9 +291,8 @@ Keyword: {best_keyword}
   📌 [소제목 내용 여기에 작성]
 </div>
 
-2. 글 중간에 딱 2번, 아래의 감성 실사 사진 URL을 본문에 마크다운 이미지 문법으로 삽입하세요. (예: `![감성사진]({flickr_url_1})`)
-사진 1: {flickr_url_1}
-사진 2: {flickr_url_2}
+2. 글 중간에 딱 1번, 아래의 제공된 감성 실사 사진 마크다운을 본문의 가장 자연스러운 위치에 그대로 삽입하세요.
+{vibe_markdown}
 
 3. 글 전체에서 최소 2회 이상, 독자에게 꼭 전달해야 할 핵심 정보(예: 가격 팁, 주의사항)를 아래 박스로 감싸세요.
 노란 꿀팁 박스:

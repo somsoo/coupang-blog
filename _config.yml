@@ -1,9 +1,18 @@
 ﻿title: Life Tips
 description: 일상을 바꾸는 꿀팁과 가성비 최고 꿀템 추천.
 url: "https://life-tips.enjoy-onepage.com"
-baseurl: ''
+baseurl: "/coupang-blog"
 theme: minima
 permalink: /:year/:month/:day/:title/
 plugins:
   - jekyll-feed
   - jekyll-seo-tag
+exclude:
+  - AI_MAINTENANCE_RULES.md
+  - auto_poster.py
+  - requirements.txt
+  - Gemfile
+  - Gemfile.lock
+  - vendor
+header_pages:
+  - all_posts.md
