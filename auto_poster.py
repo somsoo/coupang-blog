@@ -314,6 +314,8 @@ Keyword: {best_keyword}
     
     if lines and lines[0].lower().startswith("title:"):
         title = lines[0][6:].strip().replace('"', "'")
+        title = title.replace('추천', '').replace('리뷰', '').replace('내돈내산', '').replace('[', '').replace(']', '')
+        title = " ".join(title.split())
         body_content = '\n'.join(lines[1:]).strip()
         
     # 쿠팡 원본 이미지 최상단 추가
