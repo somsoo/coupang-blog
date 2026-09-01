@@ -160,16 +160,18 @@ def create_text_thumbnail(keyword, filename):
     
     # 폰트 설정 (기본 폰트 사용, 가급적 맑은 고딕 등)
     try:
-        # 우분투/윈도우 공용으로 사용 가능한 폰트 찾기
         font = ImageFont.truetype('/usr/share/fonts/truetype/nanum/NanumGothicBold.ttf', 55)
     except:
         try:
-            font = ImageFont.truetype('malgun.ttf', 55)
+            font = ImageFont.truetype('/usr/share/fonts/truetype/nanum/NanumGothic.ttf', 55)
         except:
-            font = ImageFont.load_default()
+            try:
+                font = ImageFont.truetype('malgun.ttf', 55)
+            except:
+                font = ImageFont.load_default()
             
     # 텍스트 중앙 정렬 계산 로직
-    text = f'[{keyword}]\n핵심 리뷰 & 추천'
+    text = f'[{keyword}]\n핵심 정보 & 꿀팁'
     
     try:
         # Pillow 10+ 호환
