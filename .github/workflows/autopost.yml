@@ -2,7 +2,7 @@ name: Auto Poster
 
 on:
   schedule:
-    - cron: "0 */2 * * *"
+    - cron: '21 6,18 * * *'
   workflow_dispatch:
 
 permissions:
