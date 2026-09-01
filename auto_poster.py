@@ -229,7 +229,7 @@ def generate_post():
 
     thumb_filename = f"thumb_{int(time.time())}"
     thumb_rel_path = create_text_thumbnail(thumb_text, thumb_filename)
-    image_markdown = f"![{product_name}]({{{{ '/' | append: '{thumb_rel_path}' | relative_url }}}})\\n\\n"
+    image_markdown = f"![{product_name}]({{{{ '/' | append: '{thumb_rel_path}' | relative_url }}}})\n\n"
 
     # [2] 본문 중간용 감성 실사 사진 다운로드 (1장만)
     vibe_prompt = f"""
