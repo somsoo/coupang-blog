@@ -171,7 +171,15 @@ def create_text_thumbnail(keyword, filename):
                 font = ImageFont.load_default()
             
     # 텍스트 중앙 정렬 계산 로직
-    text = f'[{keyword}]\n핵심 정보 & 꿀팁'
+    catchphrases = [
+        "나만 몰랐던 200% 활용 노하우",
+        "삶의 질 수직 상승! 완벽 해결 팁",
+        "돈 아끼고 시간 버는 진짜 꿀팁",
+        "단점은 없애고 장점만 살리는 비법",
+        "더 이상 고민 끝! 완벽 가이드"
+    ]
+    catchphrase = random.choice(catchphrases)
+    text = f'[{keyword}]\n{catchphrase}'
     
     try:
         # Pillow 10+ 호환
