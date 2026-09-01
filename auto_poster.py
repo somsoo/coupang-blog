@@ -239,8 +239,8 @@ Keyword: {best_keyword}
 
 
     # [Pass 1: 초안 작성]
-    draft_prompt = f"""당신은 '내돈내산' 리뷰 전문가입니다.
-다음 트렌드 키워드와 쿠팡 상품 정보를 바탕으로 생생한 리뷰 포스팅 초안을 1000자 이상 작성하세요.
+    draft_prompt = f"""당신은 생활 꿀팁과 유용한 정보를 전달하는 전문 에디터입니다.
+다음 트렌드 키워드와 상품 정보를 바탕으로, 광고 느낌이 전혀 나지 않는 '문제 해결형 순수 정보글' 초안을 1000자 이상 작성하세요.
 
 [트렌드 키워드]: {best_keyword}
 [상품명]: {product_name}
@@ -248,7 +248,7 @@ Keyword: {best_keyword}
 지침:
 - 소제목은 반드시 마크다운 문법(## 소제목, ### 하위소제목)만 사용하세요.
 - 절대로 'H2', 'H3', '## H2.', '### H3.' 처럼 H숫자 글자를 제목 앞에 붙이지 마세요.
-- 실제 사용해본 것처럼 솔직한 장단점을 적어주세요.
+- 상품 추천글이 아니라, 독자의 일상적인 문제를 해결해주는 유익한 정보글(팁 공유) 형태로 작성하세요.
 - '총평 및 추천 페르소나' 같은 딱딱한 마케팅 용어, 전문 용어를 절대 사용하지 마세요. 대신 '이런 분들께 추천해요' 처럼 친근하고 일상적인 표현을 사용하세요.
 """
     draft_content = generate_with_retry(draft_prompt).strip()
@@ -267,9 +267,9 @@ Keyword: {best_keyword}
     feedback_content = generate_with_retry(check_prompt).strip()
 
     # [Pass 3: 최종 윤문]
-    rewrite_prompt = f"""당신은 상위 1% 리뷰 인플루언서입니다. 
+    rewrite_prompt = f"""당신은 상위 1% 라이프스타일 정보 매거진 에디터입니다. 
 다음 [초안]에 [전문가 피드백]을 100% 반영하여 최종 리뷰 포스팅을 작성하세요.
-주의: AI 특유의 번역투 문장('결론적으로', '안녕하세요 여러분')을 완벽히 삭제하고, 진짜 내돈내산 한 것 같은 찰진 말투로 윤문하세요.
+주의: AI 특유의 번역투 문장('결론적으로', '안녕하세요 여러분')을 완벽히 삭제하고, 진짜 나만의 살림 노하우나 유용한 정보를 공유하는 정보성 글처럼 윤문하세요.
 
 [전문가 피드백]
 {feedback_content}
@@ -309,7 +309,7 @@ Keyword: {best_keyword}
     final_text = generate_with_retry(rewrite_prompt).strip()
 
     lines = final_text.split('\n')
-    title = f"{best_keyword} 추천"
+    title = f"{best_keyword} 똑똑하게 활용하는 방법"
     body_content = final_text
     
     if lines and lines[0].lower().startswith("title:"):
