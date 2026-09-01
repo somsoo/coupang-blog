@@ -9,6 +9,9 @@ import time
 import requests
 import json
 import urllib.parse
+from PIL import Image, ImageDraw, ImageFont
+import random
+
 import xml.etree.ElementTree as ET
 
 from dotenv import load_dotenv
@@ -118,6 +121,48 @@ def get_best_naver_keyword(keywords):
         pass
     return keywords[0] if keywords else "가성비템"
 
+
+def create_text_thumbnail(keyword, filename):
+    # 배경색 랜덤 파스텔 톤
+    colors = [(232, 244, 253), (253, 236, 232), (232, 253, 241), (249, 232, 253), (255, 249, 230)]
+    bg_color = random.choice(colors)
+    
+    img = Image.new('RGB', (800, 450), color=bg_color)
+    draw = ImageDraw.Draw(img)
+    
+    # 폰트 설정 (기본 폰트 사용, 가급적 맑은 고딕 등)
+    try:
+        # 우분투/윈도우 공용으로 사용 가능한 폰트 찾기
+        font = ImageFont.truetype('/usr/share/fonts/truetype/nanum/NanumGothicBold.ttf', 55)
+    except:
+        try:
+            font = ImageFont.truetype('malgun.ttf', 55)
+        except:
+            font = ImageFont.load_default()
+            
+    # 텍스트 중앙 정렬 계산 로직
+    text = f'[{keyword}]\n핵심 리뷰 & 추천'
+    
+    try:
+        # Pillow 10+ 호환
+        bbox = draw.textbbox((0, 0), text, font=font, align='center')
+        w, h = bbox[2] - bbox[0], bbox[3] - bbox[1]
+    except AttributeError:
+        # 하위 버전 호환
+        w, h = draw.textsize(text, font=font)
+        
+    x = (800 - w) / 2
+    y = (450 - h) / 2
+    
+    # 텍스트 그림자
+    draw.text((x+3, y+3), text, fill=(200, 200, 200), font=font, align='center')
+    draw.text((x, y), text, fill=(50, 50, 50), font=font, align='center')
+    
+    os.makedirs('assets/images', exist_ok=True)
+    filepath = f'assets/images/{filename}.webp'
+    img.save(filepath, 'WEBP', quality=90)
+    return f'/{filepath}'
+
 def generate_post():
     trends = get_trending_keywords()
     keyword_list = [k.strip() for k in trends.split(",") if k.strip()]
@@ -136,15 +181,30 @@ def generate_post():
 '''
 
 
-    if product_image:
-        image_markdown = f"![{product_name}]({product_image})\n\n"
-    else:
-        # 쿠팡 이미지 없을 때 Pollinations AI 이미지 자동 생성 (fallback)
-        obj_prompt = urllib.parse.quote(
-            f"A realistic photograph of {best_keyword} product on a clean desk, bright natural lighting, simple and clear"
-        )
-        pollinations_url = f"https://image.pollinations.ai/prompt/{obj_prompt}?width=800&height=800&nologo=true&private=true&model=flux"
-        image_markdown = f"![{product_name}]({pollinations_url})\n\n"
+    # [1] 최상단 텍스트 썸네일 자동 생성 및 삽입
+    thumb_filename = f"thumb_{int(time.time())}"
+    thumb_url = create_text_thumbnail(best_keyword, thumb_filename)
+    image_markdown = f"![{product_name}]({thumb_url})\n\n"
+
+    # [2] 본문 중간용 감성 실사 사진 (Flickr) 키워드 추출
+    vibe_prompt = f"""
+Translate the following product keyword into 2 English keywords that represent a clean, aesthetic lifestyle or interior mood.
+Example: '샤워기 필터' -> 'bathroom,clean'
+Example: '무선 키보드' -> 'workspace,desk'
+Example: '커피 캡슐' -> 'kitchen,coffee'
+Do not use specific brand names, just generic mood keywords separated by comma. Output ONLY the keywords.
+Keyword: {best_keyword}
+"""
+    try:
+        vibe_keywords = generate_with_retry(vibe_prompt).strip()
+    except:
+        vibe_keywords = "interior,clean"
+    
+    # 캐시 방지를 위해 lock 값 부여
+    flickr_url_1 = f"https://loremflickr.com/800/500/{vibe_keywords}/all?lock=1"
+    flickr_url_2 = f"https://loremflickr.com/800/500/{vibe_keywords}/all?lock=2"
+
+
 
     # [Pass 1: 초안 작성]
     draft_prompt = f"""당신은 '내돈내산' 리뷰 전문가입니다.
@@ -157,6 +217,7 @@ def generate_post():
 - 소제목은 반드시 마크다운 문법(## 소제목, ### 하위소제목)만 사용하세요.
 - 절대로 'H2', 'H3', '## H2.', '### H3.' 처럼 H숫자 글자를 제목 앞에 붙이지 마세요.
 - 실제 사용해본 것처럼 솔직한 장단점을 적어주세요.
+- '총평 및 추천 페르소나' 같은 딱딱한 마케팅 용어, 전문 용어를 절대 사용하지 마세요. 대신 '이런 분들께 추천해요' 처럼 친근하고 일상적인 표현을 사용하세요.
 """
     draft_content = generate_with_retry(draft_prompt).strip()
 
@@ -191,18 +252,27 @@ def generate_post():
 {button_html}
 
 [시각적 강조 규칙 - 반드시 사용]
-글 전체에서 최소 2회 이상, 독자에게 꼭 전달해야 할 핵심 정보(예: 가격 팁, 주의사항, 구매 포인트)를 아래 HTML 박스 중 선택해서 감싸세요.
+1. 본문의 소제목(H2)은 마크다운 `##` 대신 아래의 소제목 디자인 배너(HTML)로 무조건 감싸주세요. (단, 텍스트는 문맥에 맞게 수정)
+<div style="background-color: #34495e; color: white; padding: 12px 20px; border-radius: 8px; font-weight: bold; font-size: 1.1em; margin-top: 30px; margin-bottom: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+  📌 [소제목 내용 여기에 작성]
+</div>
 
-노란 하이라이트 박스 (꿀팁, 추천 포인트):
+2. 글 중간에 딱 2번, 아래의 감성 실사 사진 URL을 본문에 마크다운 이미지 문법으로 삽입하세요. (예: `![감성사진]({flickr_url_1})`)
+사진 1: {flickr_url_1}
+사진 2: {flickr_url_2}
+
+3. 글 전체에서 최소 2회 이상, 독자에게 꼭 전달해야 할 핵심 정보(예: 가격 팁, 주의사항)를 아래 박스로 감싸세요.
+노란 꿀팁 박스:
 <div style="background:#fffbe6; border-left:4px solid #f5c518; padding:14px 18px; margin:20px 0; border-radius:6px; font-size:0.97em;">
 💡 <strong>여기에 핵심 꿀팁 내용 작성</strong>
 </div>
 
-파란 정보 박스 (스펙, 수치, 비교 정보):
+파란 정보 박스:
 <div style="background:#e8f4fd; border-left:4px solid #2196F3; padding:14px 18px; margin:20px 0; border-radius:6px; font-size:0.97em;">
 📌 <strong>여기에 스펙/수치 정보 작성</strong>
 </div>
 """
+
 
     
     final_text = generate_with_retry(rewrite_prompt).strip()
