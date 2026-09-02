@@ -2,16 +2,37 @@ import os
 import random
 
 import requests
-def download_vibe_image(keywords, filename):
-    url = f"https://loremflickr.com/800/500/{keywords}/all"
+def download_vibe_image(prompt, filename_prefix):
+    import urllib.parse
+    os.makedirs('assets/images', exist_ok=True)
+    key = '57366919-c2774ae5199cc6a6cdb9a301d'
+    query = urllib.parse.quote(prompt)
+    url = f"https://pixabay.com/api/?key={key}&q={query}&image_type=photo&orientation=horizontal&per_page=3"
     try:
-        r = requests.get(url, timeout=10, allow_redirects=True)
-        os.makedirs('assets/images', exist_ok=True)
-        filepath = f'assets/images/{filename}.jpg'
-        with open(filepath, 'wb') as f:
-            f.write(r.content)
-        return filepath
-    except:
+        r = requests.get(url, timeout=10)
+        data = r.json()
+        hits = data.get('hits', [])
+        if not hits: return ""
+        hit = random.choice(hits[:3])
+        img_url = hit['webformatURL']
+        img_r = requests.get(img_url, timeout=10)
+        try:
+            image = Image.open(io.BytesIO(img_r.content))
+            base_width = 800
+            if image.size[0] > base_width:
+                wpercent = (base_width / float(image.size[0]))
+                hsize = int((float(image.size[1]) * float(wpercent)))
+                image = image.resize((base_width, hsize), Image.Resampling.LANCZOS)
+            img_path = f'assets/images/{filename_prefix}.webp'
+            image.save(img_path, 'WEBP', quality=85)
+            return img_path
+        except:
+            img_path = f'assets/images/{filename_prefix}.jpg'
+            with open(img_path, 'wb') as f:
+                f.write(img_r.content)
+            return img_path
+    except Exception as e:
+        print(f"Pixabay failed: {e}")
         return ""
 
 from datetime import datetime, timedelta
@@ -27,16 +48,37 @@ from PIL import Image, ImageDraw, ImageFont
 import random
 
 import requests
-def download_vibe_image(keywords, filename):
-    url = f"https://loremflickr.com/800/500/{keywords}/all"
+def download_vibe_image(prompt, filename_prefix):
+    import urllib.parse
+    os.makedirs('assets/images', exist_ok=True)
+    key = '57366919-c2774ae5199cc6a6cdb9a301d'
+    query = urllib.parse.quote(prompt)
+    url = f"https://pixabay.com/api/?key={key}&q={query}&image_type=photo&orientation=horizontal&per_page=3"
     try:
-        r = requests.get(url, timeout=10, allow_redirects=True)
-        os.makedirs('assets/images', exist_ok=True)
-        filepath = f'assets/images/{filename}.jpg'
-        with open(filepath, 'wb') as f:
-            f.write(r.content)
-        return filepath
-    except:
+        r = requests.get(url, timeout=10)
+        data = r.json()
+        hits = data.get('hits', [])
+        if not hits: return ""
+        hit = random.choice(hits[:3])
+        img_url = hit['webformatURL']
+        img_r = requests.get(img_url, timeout=10)
+        try:
+            image = Image.open(io.BytesIO(img_r.content))
+            base_width = 800
+            if image.size[0] > base_width:
+                wpercent = (base_width / float(image.size[0]))
+                hsize = int((float(image.size[1]) * float(wpercent)))
+                image = image.resize((base_width, hsize), Image.Resampling.LANCZOS)
+            img_path = f'assets/images/{filename_prefix}.webp'
+            image.save(img_path, 'WEBP', quality=85)
+            return img_path
+        except:
+            img_path = f'assets/images/{filename_prefix}.jpg'
+            with open(img_path, 'wb') as f:
+                f.write(img_r.content)
+            return img_path
+    except Exception as e:
+        print(f"Pixabay failed: {e}")
         return ""
 
 
@@ -363,7 +405,7 @@ Keyword: {best_keyword}
 </div>'''
 
     final_body = ad_top + "\n" + body_content + "\n" + ad_bottom
-    return title, final_body
+    return title, final_body, thumb_rel_path
 
 
 def save_post(title, body, thumb_rel_path):
