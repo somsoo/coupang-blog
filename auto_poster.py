@@ -135,36 +135,65 @@ def generate_post(keyword, products):
     for idx, p in enumerate(products, 1):
         products_info += f"[{idx}위 상품]\n상품명: {p.get('productName')}\n가격: {p.get('productPrice')}원\n링크: {p.get('productUrl')}\n\n"
 
-    # NEW: Advanced Copywriting Prompt
-    rewrite_prompt = f"""
-    당신은 네이버/구글 상위 1% 인플루언서 마케터입니다.
-    이번 포스팅의 핵심 키워드는 '{keyword}'입니다. 
-    
-    [작성 원칙 - 매우 중요]
-    1. 제목과 본문에 "추천", "리뷰", "BEST", "고르는 법" 같은 뻔한 광고성 단어를 절대 쓰지 마세요.
-    2. 소비자의 일상적인 불편함(페인포인트)이나 호기심을 해결해주는 '순수 정보성 꿀팁 매거진' 톤으로 작성하세요.
-    3. 글의 중반부 이후에 자연스럽게 아래의 [쿠팡 1~3위 상품 정보]를 해결책으로 제시하세요. (상품명과 장점을 자연스럽게 어필)
-    4. 반드시 마크다운 포맷으로 작성하세요. 
-    5. 본문의 적절한 위치(서론 직후)에 정확히 '[VIBE_IMAGE_HERE]' 라고 딱 1번만 입력하세요.
-    6. 각 상품을 소개할 때, 제품의 링크 위치에 정확히 '[COUPANG_LINK_1]', '[COUPANG_LINK_2]', '[COUPANG_LINK_3]' 처럼 플레이스홀더를 삽입하세요.
-    
-    [쿠팡 1~3위 상품 정보]
-    {products_info}
-    
-    글을 시작하세요.
-    """
+    # Pass 1: Target Profiling
+    profile_prompt = f"""당신은 30~50대를 타겟으로 하는 최상위 한국어 마케팅 카피라이터입니다.
+'{keyword}'에 대해 소비자가 가장 겪고 있는 일상적 불편함, 결핍, 갈망하는 점이 무엇인지 3문장으로 날카롭게 분석하세요."""
+    profiling = generate_with_retry(profile_prompt)
+
+    # Pass 2: Outline Design
+    outline_prompt = f"""'{profiling}'을 바탕으로 '{keyword}'에 대해 소비자의 호기심을 자극하고 해결책을 제시하는 전문 정보성 매거진 목차(H2 3~4개, 각 H2당 하위 H3 포함)를 마크다운 형식으로 설계하세요.
+광고성 단어(추천, BEST 등)는 일체 배제하세요."""
+    outline = generate_with_retry(outline_prompt)
+
+    # Pass 3: Informational Draft
+    draft_prompt = f"""아래 목차를 바탕으로 '{keyword}'에 대해 1500자 분량의 순수 정보성 블로그 초안을 작성하세요.
+[타겟 분석]: {profiling}
+[목차]:
+{outline}
+
+[작성 규칙]
+1. 첫 문장은 독자의 결핍과 불편함에 깊이 공감하며 시작하세요.
+2. 각 문단은 3줄을 넘지 않도록 가독성 있게 작성하세요.
+3. '내가 써봤는데' 같은 가짜 경험담이나 과장 광고는 절대 금지합니다."""
+    draft = generate_with_retry(draft_prompt)
+
+    # Pass 4: Critique
+    critique_prompt = f"""당신은 혹독한 SEO/AEO 및 콘텐츠 마케팅 전문가입니다.
+다음 초안을 읽고 개선해야 할 핵심 단점 3가지를 신랄하게 지적하세요.
+기준: 가독성, AI 특유의 기계적인 말투 여부, 실질적인 정보성 가치, 자연스러운 몰입도.
+[초안]:
+{draft}"""
+    critique = generate_with_retry(critique_prompt)
+
+    # Pass 5: Rewrite with Coupang Products Integration
+    rewrite_prompt = f"""당신은 상위 1% 전문 에디터입니다. [초안]에 [전문가 비판]을 100% 수용하여 최종 2000자 내외의 완성도 높은 블로그 본문으로 리라이트하세요.
+인공지능 특유의 번역투나 기계적 문체를 완전히 제거하고, 한국인이 직접 쓴 것처럼 자연스럽고 매끄럽게 작성하세요.
+
+[전문가 비판]:
+{critique}
+
+[초안]:
+{draft}
+
+[쿠팡 1~3위 해결책 상품 정보]:
+{products_info}
+
+[필수 삽입 및 배치 규칙]
+1. 본문 서론 직후 적절한 위치에 정확히 '[VIBE_IMAGE_HERE]' 라는 텍스트를 딱 1번만 단독 줄로 삽입하세요.
+2. 글의 중반부 이후 문제 해결책으로 위 1~3위 상품을 자연스럽게 언급하고, 각 제품 소개 위치에 각각 '[COUPANG_LINK_1]', '[COUPANG_LINK_2]', '[COUPANG_LINK_3]' 플레이스홀더를 정확히 삽입하세요.
+3. 마크다운 코드 블록(```)으로 전체 본문을 감싸지 마세요.
+"""
     final_text = generate_with_retry(rewrite_prompt)
     final_text = re.sub(r'(?i)^(?:#+\s*)?H[23]:\s*', '', final_text, flags=re.MULTILINE)
     final_text = re.sub(r'^---.*?---\s*', '', final_text, flags=re.DOTALL)
 
-    meta_prompt = f"""
-    방금 작성된 글에 대한 JSON 메타데이터를 반환하세요.
-    {{ 
-      'title': '{keyword}를 활용한 어그로성/호기심 자극형 블로그 제목 (광고 냄새 제거)', 
-      'thumb_hook': '{keyword} 관련 썸네일에 들어갈 아주 짧고 강렬한 두 줄 텍스트', 
-      'vibe_keywords': '픽사베이 영문 검색용 분위기 이미지 키워드 (예: car accessory, baby room)'
-    }}
-    """
+    # Pass 6: Metadata Generation
+    meta_prompt = f"""방금 작성된 글에 대한 메타데이터를 JSON 형식으로 반환하세요.
+{{ 
+  "title": "{keyword}를 활용한 어그로성/호기심 자극형 블로그 제목 (광고 냄새 없는 1줄)", 
+  "thumb_hook": "{keyword} 관련 썸네일에 들어갈 2줄짜리 강력한 카피 (줄바꿈은 \\n 사용)", 
+  "vibe_keywords": "픽사베이 영문 검색용 분위기 이미지 키워드 1~2개 (예: clean room, kitchen)"
+}}"""
     meta_json_str = generate_with_retry(meta_prompt, is_json=True)
     try:
         meta = json.loads(meta_json_str)
