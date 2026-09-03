@@ -161,10 +161,10 @@ def generate_post(campaign, keyword):
     
     ftc_text = '<p style="font-size: 12px; color: #999; text-align: center; margin-top: 40px; margin-bottom: 10px;">이 포스팅은 쿠팡 파트너스 활동의 일환으로, 이에 따른 일정액의 수수료를 제공받습니다.</p>'
     cpa_button = f"""
-<div style="margin: 40px 0; padding: 25px; text-align: center; border: 1px solid #e5e7eb; border-radius: 12px; background-color: #fafafa; box-shadow: 0 4px 6px rgba(0,0,0,0.02);">
-    <h3 style="color: #111; margin-bottom: 12px; font-weight: bold; font-size: 20px;">🛒 에디터 추천: {campaign['name']}</h3>
+<div style="margin: 30px 0; padding: 20px; text-align: center; border: 1px solid #e5e7eb; border-radius: 12px; background-color: #fafafa; box-shadow: 0 4px 6px rgba(0,0,0,0.02);">
+    <h3 style="color: #111; margin-bottom: 12px; font-weight: bold; font-size: 18px; word-break: keep-all;">💡 강력 추천: {campaign['name']}</h3>
     <p style="font-size: 15px; margin-bottom: 20px; color: #4b5563; word-break: keep-all;">{campaign['benefits']}</p>
-    <a href="{campaign['link']}" target="_blank" style="display: inline-block; padding: 15px 30px; background-color: #e52528; color: white; font-size: 18px; font-weight: bold; text-decoration: none; border-radius: 8px; transition: background-color 0.3s; box-shadow: 0 4px 6px rgba(229,37,40,0.3);">🚀 {cta_text}</a>
+    <a href="{campaign['link']}" target="_blank" style="display: block; width: 90%; max-width: 320px; margin: 0 auto; padding: 16px 20px; box-sizing: border-box; background-color: #e52528; color: white; font-size: 17px; font-weight: bold; text-decoration: none; border-radius: 8px; box-shadow: 0 4px 6px rgba(229,37,40,0.3); word-break: keep-all;">🛒 {cta_text}</a>
 </div>
 {ftc_text}
 """
