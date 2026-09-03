@@ -1,4 +1,4 @@
-﻿import os, json, random, re, time, hmac, hashlib, base64, urllib.parse, datetime, requests
+import os, json, random, re, time, hmac, hashlib, base64, urllib.parse, datetime, requests
 import google.generativeai as genai
 from PIL import Image, ImageDraw, ImageFont
 from io import BytesIO
@@ -222,7 +222,7 @@ def main():
             used_keywords = set([line.strip() for line in f if line.strip()])
 
     # Seed broad categories for discovery
-    seed_categories = ['자동차용품', '캠핑용품', '신생아용품', '자취방인테리어', '주방가전', '반려동물간식', '여름철필수템']
+    seed_categories = ['생활용품', '청소용품', '욕실용품', '주방용품', '수납정리용품', '세탁용품', '자취생필수템', '생활가전']
     selected_seed = random.choice(seed_categories)
     print(f"Mining trending keywords for: {selected_seed}")
     
