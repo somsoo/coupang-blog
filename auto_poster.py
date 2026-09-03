@@ -1,57 +1,95 @@
-import os
-import json
-import random
-import time
-import re
-from datetime import datetime
+﻿import os, json, random, re, time, hmac, hashlib, base64, urllib.parse, datetime, requests
 import google.generativeai as genai
+from PIL import Image, ImageDraw, ImageFont
+from io import BytesIO
 
-api_keys_str = os.environ.get('GEMINI_API_KEY', '')
-if not api_keys_str:
-    print('GEMINI_API_KEY is not set.')
-    exit(1)
-API_KEYS = [k.strip() for k in api_keys_str.split(',') if k.strip()]
-models_to_use = ['gemini-3.5-flash-lite', 'gemini-3.1-flash-lite']
-genai.configure(api_key=API_KEYS[0])
+# ----------------- CONFIGURATION -----------------
+NAVER_CUSTOMER_ID = os.getenv('NAVER_CUSTOMER_ID', '1560667')
+NAVER_ACCESS_LICENSE = os.getenv('NAVER_ACCESS_LICENSE', '0100000000275b3c8ab39dd56bad01b6c00904dfb52a7b55ec7176e7e42c48521f51cc0117')
+NAVER_SECRET_KEY = os.getenv('NAVER_SECRET_KEY', 'AQAAAAAnWzyKs53Va60BtsAJBN+19kZUXy+tl4BrNzcRhWmIWw==')
+COUPANG_ACCESS_KEY = os.getenv('COUPANG_ACCESS_KEY', 'd3f6de56-bd4a-4282-823f-a2d5f7a1898f')
+COUPANG_SECRET_KEY = os.getenv('COUPANG_SECRET_KEY', 'dad5117274fc82084ad8276ca91e1cc465483134')
+
+genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
+model = genai.GenerativeModel('gemini-1.5-flash')
 
 def generate_with_retry(prompt, is_json=False):
-    for model_name in models_to_use:
+    for _ in range(3):
         try:
-            model = genai.GenerativeModel(model_name)
-            config = genai.GenerationConfig(response_mime_type="application/json") if is_json else None
-            response = model.generate_content(prompt, generation_config=config)
-            if response.text:
-                return response.text
+            res = model.generate_content(prompt)
+            text = res.text.strip()
+            if is_json:
+                text = text.replace('```json', '').replace('```', '').strip()
+            return text
         except Exception as e:
-            pass
-    raise Exception("Critical: All API models exhausted!")
+            time.sleep(2)
+    return "{}" if is_json else ""
 
-def create_text_thumbnail(text, filename_prefix="thumb"):
-    import urllib.request
-    lines = text.strip().split('
-')
-    lines = [line for line in lines if line.strip()][:3]
-    img_width, img_height = 1200, 500
-    background_color = (40, 50, 70)
-    text_color = (255, 255, 255)
+# ----------------- NAVER API (KEYWORD MINING) -----------------
+def get_naver_signature(timestamp, method, path):
+    message = f"{timestamp}.{method}.{path}"
+    sign = hmac.new(NAVER_SECRET_KEY.encode('utf-8'), message.encode('utf-8'), hashlib.sha256)
+    return base64.b64encode(sign.digest()).decode()
+
+def get_trending_keywords(hint_keyword):
+    path = '/keywordstool'
+    url = 'https://api.naver.com' + path
+    timestamp = str(int(round(time.time() * 1000)))
+    headers = {
+        'X-Timestamp': timestamp,
+        'X-API-KEY': NAVER_ACCESS_LICENSE,
+        'X-Customer': str(NAVER_CUSTOMER_ID),
+        'X-Signature': get_naver_signature(timestamp, 'GET', path)
+    }
     try:
-        from PIL import Image, ImageDraw, ImageFont
-        img = Image.new('RGB', (img_width, img_height), color=background_color)
-        draw = ImageDraw.Draw(img)
-        
+        response = requests.get(url, params={'hintKeywords': hint_keyword, 'showDetail': 1}, headers=headers, timeout=10)
+        if response.status_code == 200:
+            data = response.json()
+            return [k['relKeyword'] for k in data.get('keywordList', [])[:50]]
+    except Exception as e:
+        print(f"Naver API error: {e}")
+    return []
+
+# ----------------- COUPANG API (PRODUCT FETCHING) -----------------
+def get_coupang_signature(method, url_path):
+    from time import gmtime, strftime
+    datetime_gmt = strftime('%y%m%d', gmtime()) + 'T' + strftime('%H%M%S', gmtime()) + 'Z'
+    path, *query_parts = url_path.split("?")
+    query = query_parts[0] if query_parts else ""
+    message = datetime_gmt + method + path + query
+    signature = hmac.new(bytes(COUPANG_SECRET_KEY, "utf-8"), message.encode("utf-8"), hashlib.sha256).hexdigest()
+    return f"CEA algorithm=HmacSHA256, access-key={COUPANG_ACCESS_KEY}, signed-date={datetime_gmt}, signature={signature}"
+
+def search_coupang_products(keyword, limit=3):
+    method = 'GET'
+    url_path = f"/v2/providers/affiliate_open_api/apis/openapi/products/search?keyword={urllib.parse.quote(keyword)}&limit={limit}"
+    url = f"https://api-gateway.coupang.com{url_path}"
+    headers = {"Authorization": get_coupang_signature(method, url_path), "Content-Type": "application/json"}
+    try:
+        response = requests.get(url, headers=headers, timeout=10)
+        if response.status_code == 200:
+            return response.json().get('data', {}).get('productData', [])
+    except Exception as e:
+        print(f"Coupang API error: {e}")
+    return []
+
+# ----------------- THUMBNAIL LOGIC -----------------
+def create_text_thumbnail(text, filename_prefix):
+    import urllib.request
+    try:
         font_path = "NanumGothic-Bold.ttf"
         if not os.path.exists(font_path):
-            try:
-                urllib.request.urlretrieve("https://github.com/google/fonts/raw/main/ofl/nanumgothic/NanumGothic-Bold.ttf", font_path)
-            except:
-                pass
-                
-        try:
-            font = ImageFont.truetype(font_path, 80)
-        except:
-            font = ImageFont.load_default()
+            urllib.request.urlretrieve("https://github.com/google/fonts/raw/main/ofl/nanumgothic/NanumGothic-Bold.ttf", font_path)
             
-        draw.rectangle([30, 30, img_width-30, img_height-30], outline=(100, 150, 200), width=3)
+        img_width, img_height = 800, 800
+        bg_color = (20, 20, 25)
+        text_color = (255, 255, 255)
+        
+        img = Image.new('RGB', (img_width, img_height), color=bg_color)
+        draw = ImageDraw.Draw(img)
+        font = ImageFont.truetype(font_path, 75)
+        
+        lines = text.split('\n')
         y_text = (img_height // 2) - (len(lines) * 50)
         for line in lines:
             line = line.strip()
@@ -76,11 +114,9 @@ def create_text_thumbnail(text, filename_prefix="thumb"):
 def download_vibe_image(img_url, filename_prefix):
     if not img_url: return ""
     try:
-        import requests, io
-        from PIL import Image
         os.makedirs('assets/images', exist_ok=True)
         img_r = requests.get(img_url, timeout=10)
-        image = Image.open(io.BytesIO(img_r.content))
+        image = Image.open(BytesIO(img_r.content))
         base_width = 800
         if image.size[0] > base_width:
             wpercent = (base_width / float(image.size[0]))
@@ -92,109 +128,135 @@ def download_vibe_image(img_url, filename_prefix):
     except:
         return ""
 
-def generate_post(campaign, keyword):
-    profile_prompt = f"당신은 30~50대를 타겟으로 하는 최상급 한국어 마케팅 카피라이터입니다. '{keyword}'의 타겟 유저가 가장 갈망하는 혜택이 무엇인지 3문장으로 분석하세요."
-    profiling = generate_with_retry(profile_prompt)
-    
-    outline_prompt = f"'{profiling}'을 바탕으로 '{keyword}'에 대한 정보성 블로그 포스팅 목차(H2 3개)를 마크다운으로 작성하세요."
-    outline = generate_with_retry(outline_prompt)
+# ----------------- POST GENERATION -----------------
+def generate_post(keyword, products):
+    # Formulate product info
+    products_info = ""
+    for idx, p in enumerate(products, 1):
+        products_info += f"[{idx}위 상품]\n상품명: {p.get('productName')}\n가격: {p.get('productPrice')}원\n링크: {p.get('productUrl')}\n\n"
 
-    draft_prompt = f"""
-    아래 목차를 바탕으로 '{keyword}'에 대한 1500자 분량의 전문적인 정보성 블로그 포스팅 초안을 작성하세요.
-    [목차]
-    {outline}
-    [캠페인 혜택]
-    {campaign['benefits']}
-    [절대 규칙]
-    {campaign['rules']}
-    """
-    draft = generate_with_retry(draft_prompt)
-
-    critique_prompt = f"마케팅 전문가로서 위 초안({draft})의 전환율(CPA 신청)과 구글 상위 노출을 높이기 위한 개선점 3가지를 제시하세요."
-    critique = generate_with_retry(critique_prompt)
-
+    # NEW: Advanced Copywriting Prompt
     rewrite_prompt = f"""
-    개선점({critique})을 반영하여 최종 2000자 블로그 본문(한국어)을 완성하세요.
-    CRITICAL RULES:
-    1. 본문의 딱 중간 지점(대략 절반)에 정확히 '[VIBE_IMAGE_HERE]' 라는 텍스트를 1회만 삽입하세요. (이미지는 많이 넣지 마세요)
-    2. 마크다운 코드 블록(`)은 절대 사용하지 마세요. 구조화 데이터(JSON-LD)가 필요하다면 반드시 <script type="application/ld+json"> 태그 안에 넣어서 유저 눈에 보이지 않게 하세요.
-    3. 글 내용 중에 "무조건 합격", "월 500 보장" 같은 과장 광고는 절대 쓰지 마세요.
+    당신은 네이버/구글 상위 1% 인플루언서 마케터입니다.
+    이번 포스팅의 핵심 키워드는 '{keyword}'입니다. 
     
-    [초안]
-    {draft}
+    [작성 원칙 - 매우 중요]
+    1. 제목과 본문에 "추천", "리뷰", "BEST", "고르는 법" 같은 뻔한 광고성 단어를 절대 쓰지 마세요.
+    2. 소비자의 일상적인 불편함(페인포인트)이나 호기심을 해결해주는 '순수 정보성 꿀팁 매거진' 톤으로 작성하세요.
+    3. 글의 중반부 이후에 자연스럽게 아래의 [쿠팡 1~3위 상품 정보]를 해결책으로 제시하세요. (상품명과 장점을 자연스럽게 어필)
+    4. 반드시 마크다운 포맷으로 작성하세요. 
+    5. 본문의 적절한 위치(서론 직후)에 정확히 '[VIBE_IMAGE_HERE]' 라고 딱 1번만 입력하세요.
+    6. 각 상품을 소개할 때, 제품의 링크 위치에 정확히 '[COUPANG_LINK_1]', '[COUPANG_LINK_2]', '[COUPANG_LINK_3]' 처럼 플레이스홀더를 삽입하세요.
+    
+    [쿠팡 1~3위 상품 정보]
+    {products_info}
+    
+    글을 시작하세요.
     """
     final_text = generate_with_retry(rewrite_prompt)
-    
     final_text = re.sub(r'(?i)^(?:#+\s*)?H[23]:\s*', '', final_text, flags=re.MULTILINE)
     final_text = re.sub(r'^---.*?---\s*', '', final_text, flags=re.DOTALL)
 
-
     meta_prompt = f"""
-    이 글을 위한 JSON 데이터를 반환하세요:
+    방금 작성된 글에 대한 JSON 메타데이터를 반환하세요.
     {{ 
-      'title': '{keyword}를 포함한 후킹되는 블로그 제목', 
-      'thumb_hook': '{keyword} 관련 썸네일에 들어갈 짧은 두 줄짜리 텍스트', 
-      'vibe_keywords': '픽사베이 영문 검색용 키워드 1개 (예: study, exam)',
-      'cta_text': '이 정보의 연장선에서 자연스럽게 클릭을 유도하는 쿠팡 버튼 문구 1개 (예: 이 기준에 딱 맞는 추천 제품 보러가기, 전문가가 픽한 가성비 템 확인하기)'
+      'title': '{keyword}를 활용한 어그로성/호기심 자극형 블로그 제목 (광고 냄새 제거)', 
+      'thumb_hook': '{keyword} 관련 썸네일에 들어갈 아주 짧고 강렬한 두 줄 텍스트', 
+      'vibe_keywords': '픽사베이 영문 검색용 분위기 이미지 키워드 (예: car accessory, baby room)'
     }}
     """
     meta_json_str = generate_with_retry(meta_prompt, is_json=True)
     try:
         meta = json.loads(meta_json_str)
-        title, thumb_hook, vibe_keywords, cta_text = meta['title'], meta['thumb_hook'], meta['vibe_keywords'], meta.get('cta_text', '정보 알아보기')
+        title, thumb_hook, vibe_keywords = meta['title'], meta['thumb_hook'], meta['vibe_keywords']
     except:
-        title, thumb_hook, vibe_keywords, cta_text = f"{keyword} 핵심 가이드", f"{keyword}\n총정리", "study", "알아보기"
+        title, thumb_hook, vibe_keywords = f"{keyword} 완벽 가이드", f"{keyword}\n알아보기", "lifestyle"
 
+    # Fetch Pixabay Image
     image_urls = []
     try:
-        import urllib.parse, requests
         url = f"https://pixabay.com/api/?key=57366919-c2774ae5199cc6a6cdb9a301d&q={urllib.parse.quote(vibe_keywords)}&image_type=photo&orientation=horizontal&per_page=5"
         r = requests.get(url, timeout=10)
-        data = r.json()
-        if data.get('hits'):
-            image_urls = [hit.get('largeImageURL', hit.get('webformatURL')) for hit in data['hits']]
-    except:
-        pass
+        if r.status_code == 200:
+            data = r.json()
+            if data.get('hits'):
+                image_urls = [hit.get('largeImageURL', hit.get('webformatURL')) for hit in data['hits']]
+    except: pass
 
+    # Replace VIBE image
     parts = final_text.split('[VIBE_IMAGE_HERE]')
     processed_text = parts[0]
     if len(parts) > 1:
         v_path = ""
-        if len(image_urls) > 0:
+        if image_urls:
             v_path = download_vibe_image(image_urls[0], f"vibe_{int(time.time())}")
         if v_path:
-            processed_text += f"\n<br>\n![관련 이미지]({{{{ '/' | append: '{v_path}' | relative_url }}}})\n<br>\n"
+            processed_text += f"\n<br>\n![관련이미지]({{{{ '/' | append: '{v_path}' | relative_url }}}})\n<br>\n"
         processed_text += parts[1]
-
-    thumb_filename = f"thumb_{int(time.time())}"
-    thumb_rel_path = create_text_thumbnail(thumb_hook, thumb_filename)
     
-    ftc_text = '<p style="font-size: 12px; color: #999; text-align: center; margin-top: 40px; margin-bottom: 10px;">이 포스팅은 쿠팡 파트너스 활동의 일환으로, 이에 따른 일정액의 수수료를 제공받습니다.</p>'
-    cpa_button = f"""
+    # Generate Thumbnail
+    thumb_rel_path = create_text_thumbnail(thumb_hook, f"thumb_{int(time.time())}")
+    
+    # Replace Coupang Links with full-width CTA buttons
+    for idx, p in enumerate(products, 1):
+        placeholder = f'[COUPANG_LINK_{idx}]'
+        cta_html = f"""
 <div style="margin: 30px 0; padding: 20px; text-align: center; border: 1px solid #e5e7eb; border-radius: 12px; background-color: #fafafa; box-shadow: 0 4px 6px rgba(0,0,0,0.02);">
-    <h3 style="color: #111; margin-bottom: 12px; font-weight: bold; font-size: 18px; word-break: keep-all;">💡 강력 추천: {campaign['name']}</h3>
-    <p style="font-size: 15px; margin-bottom: 20px; color: #4b5563; word-break: keep-all;">{campaign['benefits']}</p>
-    <a href="{campaign['link']}" target="_blank" style="display: block; width: 90%; max-width: 320px; margin: 0 auto; padding: 16px 20px; box-sizing: border-box; background-color: #e52528; color: white; font-size: 17px; font-weight: bold; text-decoration: none; border-radius: 8px; box-shadow: 0 4px 6px rgba(229,37,40,0.3); word-break: keep-all;">🛒 {cta_text}</a>
+    <h3 style="color: #111; margin-bottom: 12px; font-weight: bold; font-size: 18px; word-break: keep-all;">💡 실시간 {idx}위 상품 확인하기</h3>
+    <a href="{p.get('productUrl')}" target="_blank" style="display: block; width: 100%; max-width: 320px; margin: 0 auto; padding: 16px 20px; box-sizing: border-box; background-color: #e52528; color: white; font-size: 17px; font-weight: bold; text-decoration: none; border-radius: 8px; box-shadow: 0 4px 6px rgba(229,37,40,0.3); word-break: keep-all;">🚀 제품 상세 및 후기 보러가기</a>
 </div>
-{ftc_text}
 """
-    ad_bottom = '\n<div class="manual-ad-container" style="margin: 30px 0; text-align: center;">\n<ins class="adsbygoogle" style="display:block" data-ad-client="ca-pub-2228289204702106" data-ad-slot="2231432699" data-ad-format="auto" data-full-width-responsive="true"></ins>\n<script>(adsbygoogle = window.adsbygoogle || []).push({});</script>\n</div>\n'
+        processed_text = processed_text.replace(placeholder, cta_html)
+
+    ftc_text = '\n<p style="font-size: 12px; color: #999; text-align: center; margin-top: 40px; margin-bottom: 10px;">이 포스팅은 쿠팡 파트너스 활동의 일환으로, 이에 따른 일정액의 수수료를 제공받습니다.</p>\n'
+    ad_bottom = '<div class="manual-ad-container" style="margin: 30px 0; text-align: center;">\n<ins class="adsbygoogle" style="display:block" data-ad-client="ca-pub-2228289204702106" data-ad-slot="2231432699" data-ad-format="auto" data-full-width-responsive="true"></ins>\n<script>(adsbygoogle = window.adsbygoogle || []).push({});</script>\n</div>\n'
     
-    final_text = processed_text + cpa_button + ad_bottom
+    final_text = processed_text + ftc_text + ad_bottom
     return title, final_text, thumb_rel_path
 
 def main():
-    with open('campaigns.json', 'r', encoding='utf-8-sig') as f:
-        campaigns = json.load(f)
+    history_file = 'used_keywords.txt'
+    used_keywords = set()
+    if os.path.exists(history_file):
+        with open(history_file, 'r', encoding='utf-8') as f:
+            used_keywords = set([line.strip() for line in f if line.strip()])
+
+    # Seed broad categories for discovery
+    seed_categories = ['자동차용품', '캠핑용품', '신생아용품', '자취방인테리어', '주방가전', '반려동물간식', '여름철필수템']
+    selected_seed = random.choice(seed_categories)
+    print(f"Mining trending keywords for: {selected_seed}")
     
-    campaign = random.choice(campaigns)
-    keyword = random.choice(campaign['keywords'])
-    print(f'Campaign: {campaign["name"]} | Keyword: {keyword}')
+    trending = get_trending_keywords(selected_seed)
     
-    title, post_content, thumb_path = generate_post(campaign, keyword)
+    target_keyword = None
+    for kw in trending:
+        if kw not in used_keywords:
+            target_keyword = kw
+            break
+            
+    if not target_keyword:
+        # Fallback if somehow all are used or API fails
+        print("Fallback keyword generated.")
+        target_keyword = selected_seed + " 베스트"
+
+    print(f"Selected Golden Keyword: {target_keyword}")
+    
+    # Fetch Top 3 from Coupang
+    products = search_coupang_products(target_keyword, limit=3)
+    if not products:
+        print("Failed to fetch products from Coupang API.")
+        return
+
+    # Generate Blog Post
+    title, post_content, thumb_path = generate_post(target_keyword, products)
+    
     if post_content:
-        date_str = datetime.now().strftime('%Y-%m-%d')
-        safe_title = keyword.replace(' ', '-').lower()
+        # Save keyword to history
+        with open(history_file, 'a', encoding='utf-8') as f:
+            f.write(target_keyword + '\n')
+            
+        date_str = datetime.datetime.now().strftime('%Y-%m-%d')
+        safe_title = target_keyword.replace(' ', '-').lower()
         filename = f'_posts/{date_str}-{safe_title}.md'
         os.makedirs('_posts', exist_ok=True)
         frontmatter = f"---\nlayout: post\ntitle: \"{title}\"\ndate: {date_str}\nimage: {thumb_path}\n---\n\n"
