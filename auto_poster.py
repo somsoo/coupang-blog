@@ -262,7 +262,7 @@ def main():
             f.write(target_keyword + '\n')
             
         date_str = datetime.datetime.now().strftime('%Y-%m-%d')
-        safe_title = target_keyword.replace(' ', '-').lower()
+        safe_title = target_keyword.replace(' ', '-').replace('/', '-').replace('\\', '-').replace('\ufeff', '').lower()
         filename = f'_posts/{date_str}-{safe_title}.md'
         os.makedirs('_posts', exist_ok=True)
         frontmatter = f"---\nlayout: post\ntitle: \"{title}\"\ndate: {date_str}\nimage: {thumb_path}\n---\n\n"
