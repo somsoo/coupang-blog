@@ -45,7 +45,19 @@ def get_trending_keywords(hint_keyword):
         response = requests.get(url, params={'hintKeywords': hint_keyword, 'showDetail': 1}, headers=headers, timeout=10)
         if response.status_code == 200:
             data = response.json()
-            return [k['relKeyword'] for k in data.get('keywordList', [])[:50]]
+            kw_list = []
+            for item in data.get('keywordList', []):
+                rel_kw = item.get('relKeyword', '').strip()
+                if not rel_kw:
+                    continue
+                # Parse monthly search volume
+                pc_qc = item.get('monthlyPcQcCnt', 0)
+                mo_qc = item.get('monthlyMobileQcCnt', 0)
+                pc_cnt = int(pc_qc) if str(pc_qc).isdigit() else 10
+                mo_cnt = int(mo_qc) if str(mo_qc).isdigit() else 10
+                total_qc = pc_cnt + mo_cnt
+                kw_list.append({'keyword': rel_kw, 'volume': total_qc})
+            return kw_list
     except Exception as e:
         print(f"Naver API error: {e}")
     return []
@@ -79,27 +91,44 @@ def create_text_thumbnail(text, filename_prefix):
     try:
         font_path = "NanumGothic-Bold.ttf"
         if not os.path.exists(font_path):
-            urllib.request.urlretrieve("https://github.com/google/fonts/raw/main/ofl/nanumgothic/NanumGothic-Bold.ttf", font_path)
+            try:
+                urllib.request.urlretrieve("https://github.com/google/fonts/raw/main/ofl/nanumgothic/NanumGothic-Bold.ttf", font_path)
+            except:
+                pass
             
-        img_width, img_height = 800, 800
-        bg_color = (20, 20, 25)
+        img_width, img_height = 1200, 675
+        bg_color = (24, 28, 36)
         text_color = (255, 255, 255)
+        accent_color = (59, 130, 246)
         
         img = Image.new('RGB', (img_width, img_height), color=bg_color)
         draw = ImageDraw.Draw(img)
-        font = ImageFont.truetype(font_path, 75)
         
-        lines = text.split('\n')
-        y_text = (img_height // 2) - (len(lines) * 50)
+        # Decorative border
+        draw.rectangle([40, 40, img_width - 40, img_height - 40], outline=accent_color, width=4)
+        
+        # Font load with safe fallback
+        try:
+            font = ImageFont.truetype(font_path, 80)
+        except:
+            font = ImageFont.load_default()
+        
+        raw_lines = text.strip().split('\n')
+        lines = [line.strip() for line in raw_lines if line.strip()][:3]
+        if not lines:
+            lines = ["알아두면 유용한", "생활 꿀팁 가이드"]
+            
+        total_text_height = len(lines) * 110
+        y_text = (img_height - total_text_height) // 2
+        
         for line in lines:
-            line = line.strip()
-            if not line: continue
             try:
                 bbox = draw.textbbox((0, 0), line, font=font)
                 width = bbox[2] - bbox[0]
                 height = bbox[3] - bbox[1]
             except:
-                width = len(line) * 20; height = 80
+                width = len(line) * 40
+                height = 80
             draw.text(((img_width - width) / 2, y_text), line, font=font, fill=text_color)
             y_text += height + 40
             
@@ -250,31 +279,52 @@ def main():
         with open(history_file, 'r', encoding='utf-8') as f:
             used_keywords = set([line.strip() for line in f if line.strip()])
 
-    # Load broad categories (or leaf categories) from external file
+    # 1. Load leaf categories from refined Coupang/Naver file
     seed_categories = []
     if os.path.exists('coupang_categories.txt'):
         with open('coupang_categories.txt', 'r', encoding='utf-8') as f:
             seed_categories = [line.strip() for line in f if line.strip()]
     if not seed_categories:
-        seed_categories = ['생활용품'] # fallback
+        seed_categories = ['생활용품', '주방용품', '청소용품']
         
-    selected_seed = random.choice(seed_categories)
-    print(f"Mining trending keywords for: {selected_seed}")
-    
-    trending = get_trending_keywords(selected_seed)
+    random.shuffle(seed_categories)
     
     target_keyword = None
-    for kw in trending:
-        if kw not in used_keywords:
-            target_keyword = kw
-            break
+    target_seed = None
+    
+    # 2. Iterate through seed categories to find an unused golden keyword
+    for seed in seed_categories[:10]:
+        print(f"Mining trending keywords for seed: {seed}")
+        kw_metrics = get_trending_keywords(seed)
+        if not kw_metrics:
+            continue
+            
+        # Sort keywords: prioritize golden search volumes (1,000 ~ 50,000)
+        # Filter out already used keywords
+        available_kws = [k for k in kw_metrics if k['keyword'] not in used_keywords]
+        if not available_kws:
+            continue
+            
+        # Try to find high-traffic or balanced golden keyword
+        golden_kws = [k for k in available_kws if 500 <= k['volume'] <= 50000]
+        if golden_kws:
+            # Pick top volume in golden range
+            golden_kws.sort(key=lambda x: x['volume'], reverse=True)
+            target_keyword = golden_kws[0]['keyword']
+        else:
+            # Fallback to the highest volume available
+            available_kws.sort(key=lambda x: x['volume'], reverse=True)
+            target_keyword = available_kws[0]['keyword']
+            
+        target_seed = seed
+        break
             
     if not target_keyword:
-        # Fallback if somehow all are used or API fails
-        print("Fallback keyword generated.")
-        target_keyword = selected_seed + " 베스트"
+        # Ultimate fallback
+        target_seed = random.choice(seed_categories)
+        target_keyword = f"{target_seed} 추천"
 
-    print(f"Selected Golden Keyword: {target_keyword}")
+    print(f"Selected Golden Keyword: {target_keyword} (Seed: {target_seed})")
     
     # Fetch Top 3 from Coupang
     products = search_coupang_products(target_keyword, limit=3)
