@@ -221,12 +221,14 @@ def main():
         with open(history_file, 'r', encoding='utf-8') as f:
             used_keywords = set([line.strip() for line in f if line.strip()])
 
-    # Seed broad categories for discovery
-    seed_categories = [
-        '생활용품', '청소용품', '욕실용품', '주방용품', '수납정리용품', '세탁용품', 
-        '자취생필수템', '생활가전', '침구류', '조명인테리어', '홈카페용품', '구강용품', 
-        '생필품', '계절가전', '방한용품', '방충용품', '홈트레이닝용품', '수면용품', '원룸만들기'
-    ]
+    # Load broad categories (or leaf categories) from external file
+    seed_categories = []
+    if os.path.exists('coupang_categories.txt'):
+        with open('coupang_categories.txt', 'r', encoding='utf-8') as f:
+            seed_categories = [line.strip() for line in f if line.strip()]
+    if not seed_categories:
+        seed_categories = ['생활용품'] # fallback
+        
     selected_seed = random.choice(seed_categories)
     print(f"Mining trending keywords for: {selected_seed}")
     
