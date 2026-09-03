@@ -5,6 +5,7 @@ baseurl: ""
 theme: minima
 permalink: /:year/:month/:day/:title/
 plugins:
+  - jekyll-sitemap
   - jekyll-feed
   - jekyll-seo-tag
 exclude:
