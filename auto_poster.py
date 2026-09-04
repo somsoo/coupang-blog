@@ -16,12 +16,12 @@ if not API_KEYS:
     # fallback to local env key if needed
     API_KEYS = ['AIzaSyB5Libe9lCO5J0qggAzHTQyNx0rnSmZSCU']
 
-ACTIVE_MODELS = ['gemini-2.5-flash', 'gemini-3.6-flash', 'gemini-3.1-flash-lite']
+MODELS = ['gemini-3.5-flash-lite', 'gemini-3.1-flash-lite']
 
 def generate_with_retry(prompt, is_json=False):
     for key in API_KEYS:
         genai.configure(api_key=key)
-        for model_name in ACTIVE_MODELS:
+        for model_name in MODELS:
             try:
                 model = genai.GenerativeModel(model_name)
                 config = genai.GenerationConfig(response_mime_type="application/json") if is_json else None
@@ -32,7 +32,7 @@ def generate_with_retry(prompt, is_json=False):
                         text = text.replace('```json', '').replace('```', '').strip()
                     return text
             except Exception as e:
-                print(f"Warning: Model {model_name} failed: {e}")
+                print(f"Fallback triggered: Failed on {model_name} with key ...{key[-4:]} -> {e}")
                 time.sleep(1)
                 continue
     raise Exception("Critical: Failed to generate content from all Gemini models!")
