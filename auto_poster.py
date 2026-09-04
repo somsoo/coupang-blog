@@ -11,11 +11,11 @@ COUPANG_ACCESS_KEY = os.getenv('COUPANG_ACCESS_KEY', 'd3f6de56-bd4a-4282-823f-a2
 COUPANG_SECRET_KEY = os.getenv('COUPANG_SECRET_KEY', 'dad5117274fc82084ad8276ca91e1cc465483134')
 
 api_keys_str = os.getenv("GEMINI_API_KEY", "")
-API_KEYS = [k.strip() for k in api_keys_str.split(',') if k.strip()]
-if not API_KEYS:
-    # fallback to local env key if needed
-    API_KEYS = ['AIzaSyB5Libe9lCO5J0qggAzHTQyNx0rnSmZSCU']
+if not api_keys_str:
+    print("Critical: GEMINI_API_KEY is not set.")
+    exit(1)
 
+API_KEYS = [k.strip() for k in api_keys_str.split(',') if k.strip()]
 MODELS = ['gemini-3.5-flash-lite', 'gemini-3.1-flash-lite']
 
 def generate_with_retry(prompt, is_json=False):
