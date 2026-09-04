@@ -221,7 +221,9 @@ def generate_post(keyword, products):
 
 [필수 삽입 및 배치 규칙]
 1. 본문 서론 직후 적절한 위치에 정확히 '[VIBE_IMAGE_HERE]' 라는 텍스트를 딱 1번만 단독 줄로 삽입하세요.
-2. 글의 중반부 이후 문제 해결책으로 위 1~3위 상품을 자연스럽게 언급하고, 각 제품 소개 위치에 각각 '[COUPANG_LINK_1]', '[COUPANG_LINK_2]', '[COUPANG_LINK_3]' 플레이스홀더를 정확히 삽입하세요.
+2. 글의 중반부 이후 문제 해결책으로 위 1~3위 상품을 자연스럽게 소개하세요.
+   - 중요: 문장 중간에 링크 플레이스홀더를 끼워 넣지 마세요. 각 상품에 대한 설명 문단을 온전히 마친 후, 반드시 '다음 줄에 단독 줄'로 '[COUPANG_LINK_1]', '[COUPANG_LINK_2]', '[COUPANG_LINK_3]'을 각각 1회씩만 배치하세요.
+   - 절대로 '[/COUPANG_LINK_1]' 같은 닫는 태그나 BBCode 문법을 쓰지 마세요.
 3. 마크다운 코드 블록(```)으로 전체 본문을 감싸지 마세요.
 """
     final_text = generate_with_retry(rewrite_prompt)
@@ -276,7 +278,12 @@ def generate_post(keyword, products):
     <a href="{p.get('productUrl')}" target="_blank" style="display: block; width: 100%; max-width: 320px; margin: 0 auto; padding: 16px 20px; box-sizing: border-box; background-color: #e52528; color: white; font-size: 17px; font-weight: bold; text-decoration: none; border-radius: 8px; box-shadow: 0 4px 6px rgba(229,37,40,0.3); word-break: keep-all;">🚀 제품 상세 및 후기 보러가기</a>
 </div>
 """
-        processed_text = processed_text.replace(placeholder, cta_html)
+        processed_text = processed_text.replace(placeholder, f"\n{cta_html}\n")
+        # Clean up any closing tags or malformed variants created by AI
+        processed_text = re.sub(rf'\[/COUPANG_LINK_{idx}\]', '', processed_text)
+
+    # Clean up any orphan link tags
+    processed_text = re.sub(r'\[/?COUPANG_LINK_\d+\]', '', processed_text)
 
     ftc_text = '\n<p style="font-size: 12px; color: #999; text-align: center; margin-top: 40px; margin-bottom: 10px;">이 포스팅은 쿠팡 파트너스 활동의 일환으로, 이에 따른 일정액의 수수료를 제공받습니다.</p>\n'
     ad_bottom = '<div class="manual-ad-container" style="margin: 30px 0; text-align: center;">\n<ins class="adsbygoogle" style="display:block" data-ad-client="ca-pub-2228289204702106" data-ad-slot="2231432699" data-ad-format="auto" data-full-width-responsive="true"></ins>\n<script>(adsbygoogle = window.adsbygoogle || []).push({});</script>\n</div>\n'
