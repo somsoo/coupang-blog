@@ -177,8 +177,8 @@ def generate_post(keyword, products):
         products_info += f"[{idx}위 상품]\n상품명: {p.get('productName')}\n가격: {p.get('productPrice')}원\n링크: {p.get('productUrl')}\n\n"
 
     # Pass 1: Target Profiling
-    profile_prompt = f"""당신은 30~50대를 타겟으로 하는 최상위 한국어 마케팅 카피라이터입니다.
-'{keyword}'에 대해 소비자가 가장 겪고 있는 일상적 불편함, 결핍, 갈망하는 점이 무엇인지 3문장으로 날카롭게 분석하세요."""
+    profile_prompt = f"""당신은 실패 없는 현명한 가성비 소비를 연구하는 15년 차 베테랑 리빙·살림 큐레이터입니다.
+'{keyword}'에 대해 소비자가 일상에서 겪는 현실적인 불편함, 돈 낭비의 위험, 실질적인 결핍을 3문장으로 날카롭게 분석하세요."""
     profiling = generate_with_retry(profile_prompt)
 
     # Pass 2: Outline Design
