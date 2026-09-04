@@ -10,20 +10,32 @@ NAVER_SECRET_KEY = os.getenv('NAVER_SECRET_KEY', 'AQAAAAAnWzyKs53Va60BtsAJBN+19k
 COUPANG_ACCESS_KEY = os.getenv('COUPANG_ACCESS_KEY', 'd3f6de56-bd4a-4282-823f-a2d5f7a1898f')
 COUPANG_SECRET_KEY = os.getenv('COUPANG_SECRET_KEY', 'dad5117274fc82084ad8276ca91e1cc465483134')
 
-genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
-model = genai.GenerativeModel('gemini-1.5-flash')
+api_keys_str = os.getenv("GEMINI_API_KEY", "")
+API_KEYS = [k.strip() for k in api_keys_str.split(',') if k.strip()]
+if not API_KEYS:
+    # fallback to local env key if needed
+    API_KEYS = ['AIzaSyB5Libe9lCO5J0qggAzHTQyNx0rnSmZSCU']
+
+ACTIVE_MODELS = ['gemini-2.5-flash', 'gemini-3.6-flash', 'gemini-3.1-flash-lite']
 
 def generate_with_retry(prompt, is_json=False):
-    for _ in range(3):
-        try:
-            res = model.generate_content(prompt)
-            text = res.text.strip()
-            if is_json:
-                text = text.replace('```json', '').replace('```', '').strip()
-            return text
-        except Exception as e:
-            time.sleep(2)
-    return "{}" if is_json else ""
+    for key in API_KEYS:
+        genai.configure(api_key=key)
+        for model_name in ACTIVE_MODELS:
+            try:
+                model = genai.GenerativeModel(model_name)
+                config = genai.GenerationConfig(response_mime_type="application/json") if is_json else None
+                res = model.generate_content(prompt, generation_config=config)
+                if res.text and res.text.strip():
+                    text = res.text.strip()
+                    if is_json:
+                        text = text.replace('```json', '').replace('```', '').strip()
+                    return text
+            except Exception as e:
+                print(f"Warning: Model {model_name} failed: {e}")
+                time.sleep(1)
+                continue
+    raise Exception("Critical: Failed to generate content from all Gemini models!")
 
 # ----------------- NAVER API (KEYWORD MINING) -----------------
 def get_naver_signature(timestamp, method, path):
