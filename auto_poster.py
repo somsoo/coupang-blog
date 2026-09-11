@@ -306,7 +306,7 @@ def generate_post(keyword, products):
     # Clean up any orphan link tags
     processed_text = re.sub(r'\[/?COUPANG_LINK_\d+\]', '', processed_text)
 
-    # 2번째 H2 앞에 중간 애드센스 삽입
+    # 2번째 H2(또는 H3) 소제목 앞에 중간 애드센스 안전 삽입
     ad_mid = """
 <div class="ad-slot-wrap" style="margin: 35px 0; text-align: center;">
   <ins class="adsbygoogle"
@@ -318,14 +318,18 @@ def generate_post(keyword, products):
   <script>(adsbygoogle = window.adsbygoogle || []).push({});</script>
 </div>
 """
-    h2_indices = [m.start() for m in re.finditer(r'(?m)^##\s+', processed_text)]
-    if len(h2_indices) >= 2:
-        insert_pos = h2_indices[1]
+    heading_indices = [m.start() for m in re.finditer(r'(?m)^#{2,3}\s+', processed_text)]
+    if len(heading_indices) >= 2:
+        insert_pos = heading_indices[1]
         processed_text = processed_text[:insert_pos] + ad_mid + "\n\n" + processed_text[insert_pos:]
     else:
-        # H2가 2개 미만이면 본문 절반 지점에 삽입
-        mid_idx = len(processed_text) // 2
-        processed_text = processed_text[:mid_idx] + "\n\n" + ad_mid + "\n\n" + processed_text[mid_idx:]
+        # 소제목이 부족할 경우 문단 사이(\n\n)에만 안전하게 삽입
+        double_newlines = [m.start() for m in re.finditer(r'\n\n', processed_text)]
+        if double_newlines:
+            mid_nl = double_newlines[len(double_newlines) // 2]
+            processed_text = processed_text[:mid_nl] + "\n\n" + ad_mid + "\n\n" + processed_text[mid_nl+2:]
+        else:
+            processed_text += "\n\n" + ad_mid
 
     ftc_text = '\n<p style="font-size: 12px; color: #999; text-align: center; margin-top: 40px; margin-bottom: 10px;">이 포스팅은 쿠팡 파트너스 활동의 일환으로, 이에 따른 일정액의 수수료를 제공받습니다.</p>\n'
     
