@@ -170,79 +170,99 @@ def download_vibe_image(img_url, filename_prefix):
         return ""
 
 # ----------------- POST GENERATION -----------------
+# ----------------- POST GENERATION (3-Pass 최적화) -----------------
 def generate_post(keyword, products):
     # Formulate product info
     products_info = ""
     for idx, p in enumerate(products, 1):
         products_info += f"[{idx}위 상품]\n상품명: {p.get('productName')}\n가격: {p.get('productPrice')}원\n링크: {p.get('productUrl')}\n\n"
 
-    # Pass 1: Target Profiling
-    profile_prompt = f"""당신은 실패 없는 현명한 가성비 소비를 연구하는 15년 차 베테랑 리빙·살림 큐레이터입니다.
-'{keyword}'에 대해 소비자가 일상에서 겪는 현실적인 불편함, 돈 낭비의 위험, 실질적인 결핍을 3문장으로 날카롭게 분석하세요."""
-    profiling = generate_with_retry(profile_prompt)
+    # ▶ [Pass 1] 타겟 분석 + 목차 + 고밀도 1차 본문 초안 작성 (1회 호출)
+    print("  ▶ [Pass 1/3] 타겟 분석 및 고밀도 초안 작성 중...")
+    pass1_prompt = f"""당신은 실패 없는 현명한 가성비 소비를 연구하는 15년 차 베테랑 리빙·살림 큐레이터이자 수석 에디터입니다.
+주제 키워드: '{keyword}'
 
-    # Pass 2: Outline Design
-    outline_prompt = f"""'{profiling}'을 바탕으로 '{keyword}'에 대해 소비자의 호기심을 자극하고 해결책을 제시하는 전문 정보성 매거진 목차(H2 3~4개, 각 H2당 하위 H3 포함)를 마크다운 형식으로 설계하세요.
-광고성 단어(추천, BEST 등)는 일체 배제하세요."""
-    outline = generate_with_retry(outline_prompt)
+아래 쿠팡 1~3위 추천 상품 정보를 참고하여 독자가 일상에서 겪는 결핍과 문제를 해결하는 1,500자 내외의 정보성 블로그 1차 초안을 작성하세요.
 
-    # Pass 3: Informational Draft
-    draft_prompt = f"""아래 목차를 바탕으로 '{keyword}'에 대해 1500자 분량의 순수 정보성 블로그 초안을 작성하세요.
-[타겟 분석]: {profiling}
-[목차]:
-{outline}
+[쿠팡 1~3위 해결책 상품 정보]:
+{products_info}
 
-[작성 규칙]
-1. 첫 문장은 독자의 결핍과 불편함에 깊이 공감하며 시작하세요.
-2. 각 문단은 3줄을 넘지 않도록 가독성 있게 작성하세요.
-3. '내가 써봤는데' 같은 가짜 경험담이나 과장 광고는 절대 금지합니다."""
-    draft = generate_with_retry(draft_prompt)
+[작성 지침]
+1. 첫 문장은 독자의 현실적인 불편함과 돈 낭비의 위험에 깊이 공감하며 시작하세요.
+2. 전문 정보성 매거진 목차(H2 소제목 3개)를 구성하여 단계별 가이드를 제시하세요.
+3. '내가 써봤는데', '100% 수익 보장' 같은 가짜 경험담이나 과장 광고는 절대 금지합니다.
+4. 본문 서론 직후 단독 줄로 정확히 '[VIBE_IMAGE_HERE]' 라는 플레이스홀더를 1회만 삽입하세요.
+5. 글의 중반부 이후 문제 해결책으로 1~3위 상품을 소개하되, 각 상품 설명이 끝난 다음 줄에 단독 줄로 '[COUPANG_LINK_1]', '[COUPANG_LINK_2]', '[COUPANG_LINK_3]' 마커를 1회씩만 배치하세요.
+"""
+    draft = generate_with_retry(pass1_prompt)
+    time.sleep(1)
 
-    # Pass 4: Critique
-    critique_prompt = f"""당신은 혹독한 SEO/AEO 및 콘텐츠 마케팅 전문가입니다.
-다음 초안을 읽고 개선해야 할 핵심 단점 3가지를 신랄하게 지적하세요.
-기준: 가독성, AI 특유의 기계적인 말투 여부, 실질적인 정보성 가치, 자연스러운 몰입도.
+    # ▶ [Pass 2] 기계적 문체/가독성/신뢰도 결함 비판 Critic (1회 호출)
+    print("  ▶ [Pass 2/3] 기계적 문체 및 가독성 결함 비판(Critic) 중...")
+    critic_prompt = f"""당신은 혹독한 구글 Reviews System 및 SEO/AEO 알고리즘 평가관입니다.
+아래 초안을 면밀히 분석하여 독자의 구매 결정과 글의 신뢰도를 저해하는 결함을 신랄하게 지적하세요.
+
 [초안]:
-{draft}"""
-    critique = generate_with_retry(critique_prompt)
+{draft}
 
-    # Pass 5: Rewrite with Coupang Products Integration
-    rewrite_prompt = f"""당신은 상위 1% 전문 에디터입니다. [초안]에 [전문가 비판]을 100% 수용하여 최종 2000자 내외의 완성도 높은 블로그 본문으로 리라이트하세요.
-인공지능 특유의 번역투나 기계적 문체를 완전히 제거하고, 한국인이 직접 쓴 것처럼 자연스럽고 매끄럽게 작성하세요.
+[지적 기준]
+1. AI 특유의 판에 박힌 번역투, 공허한 미사여구, 뻔한 칭찬 지적
+2. 구체적이고 현실적인 스펙/단점 부족 지적
+3. 문단 가독성 및 호흡 지적
+4. 플레이스홀더 '[VIBE_IMAGE_HERE]', '[COUPANG_LINK_1]', '[COUPANG_LINK_2]', '[COUPANG_LINK_3]'의 보존 여부 확인
+
+반드시 개선 가이드 3~4가지를 구체적이고 간결하게 요약하여 답변하세요.
+"""
+    critique = generate_with_retry(critic_prompt)
+    time.sleep(1)
+
+    # ▶ [Pass 3] 비판 100% 수용 최종 재작성 및 메타데이터 일괄 완성 (1회 호출)
+    print("  ▶ [Pass 3/3] 비판 수용 최종 재작성 및 메타데이터 일괄 완성 중...")
+    pass3_prompt = f"""당신은 상위 1% 전문 에디터입니다. [1차 초안]에 [전문가 비판]을 100% 수용하여 최종 2000자 내외의 완성도 높은 블로그 본문과 메타데이터를 일괄 완성하세요.
 
 [전문가 비판]:
 {critique}
 
-[초안]:
+[1차 초안]:
 {draft}
 
 [쿠팡 1~3위 해결책 상품 정보]:
 {products_info}
 
-[필수 삽입 및 배치 규칙]
-1. 본문 서론 직후 적절한 위치에 정확히 '[VIBE_IMAGE_HERE]' 라는 텍스트를 딱 1번만 단독 줄로 삽입하세요.
-2. 글의 중반부 이후 문제 해결책으로 위 1~3위 상품을 자연스럽게 소개하세요.
-   - 중요: 문장 중간에 링크 플레이스홀더를 끼워 넣지 마세요. 각 상품에 대한 설명 문단을 온전히 마친 후, 반드시 '다음 줄에 단독 줄'로 '[COUPANG_LINK_1]', '[COUPANG_LINK_2]', '[COUPANG_LINK_3]'을 각각 1회씩만 배치하세요.
-   - 절대로 '[/COUPANG_LINK_1]' 같은 닫는 태그나 BBCode 문법을 쓰지 마세요.
-3. 마크다운 코드 블록(```)으로 전체 본문을 감싸지 마세요.
+[필수 배치 및 포맷 규칙]
+1. 번역투와 기계적 문체를 완전히 제거하고 한국인이 직접 쓴 것처럼 자연스럽게 작성하세요.
+2. 서론 직후 단독 줄로 '[VIBE_IMAGE_HERE]' 마커를 반드시 유지하세요.
+3. 1~3위 상품 설명 문단 직후 단독 줄로 '[COUPANG_LINK_1]', '[COUPANG_LINK_2]', '[COUPANG_LINK_3]' 마커를 1회씩 반드시 배치하세요.
+4. 마크다운 코드블록(```)으로 전체 본문을 감싸지 마세요.
+
+반드시 다음 JSON 형식으로만 최종 답변하세요:
+{{
+  "title": "{keyword}를 활용한 호기심 자극형 블로그 제목 (1줄)",
+  "thumb_hook": "{keyword} 썸네일에 들어갈 2줄 카피 (줄바꿈은 \\n 사용)",
+  "vibe_keywords": "픽사베이 영문 검색용 단어 1~2개 (예: clean room, robot vacuum)",
+  "content": "비판이 100% 반영되어 완전히 재작성된 최종 마크다운 본문 전체"
+}}
 """
-    final_text = generate_with_retry(rewrite_prompt)
+    pass3_json_str = generate_with_retry(pass3_prompt, is_json=True)
+    try:
+        data = json.loads(pass3_json_str)
+        title = data.get('title', f"{keyword} 완벽 가이드")
+        thumb_hook = data.get('thumb_hook', f"{keyword}\n알아보기")
+        vibe_keywords = data.get('vibe_keywords', "lifestyle")
+        final_text = data.get('content', draft)
+    except:
+        title = f"{keyword} 완벽 비교 가이드"
+        thumb_hook = f"{keyword}\n비교 분석"
+        vibe_keywords = "technology"
+        final_text = draft
+
     final_text = re.sub(r'(?i)^(?:#+\s*)?H[23]:\s*', '', final_text, flags=re.MULTILINE)
     final_text = re.sub(r'^---.*?---\s*', '', final_text, flags=re.DOTALL)
-
-    # Pass 6: Metadata Generation
-    meta_prompt = f"""방금 작성된 글에 대한 메타데이터를 JSON 형식으로 반환하세요.
-{{ 
-  "title": "{keyword}를 활용한 어그로성/호기심 자극형 블로그 제목 (광고 냄새 없는 1줄)", 
-  "thumb_hook": "{keyword} 관련 썸네일에 들어갈 2줄짜리 강력한 카피 (줄바꿈은 \\n 사용)", 
-  "vibe_keywords": "픽사베이 영문 검색용 분위기 이미지 키워드 1~2개 (예: clean room, kitchen)"
-}}"""
-    meta_json_str = generate_with_retry(meta_prompt, is_json=True)
-    try:
-        meta = json.loads(meta_json_str)
-        title, thumb_hook, vibe_keywords = meta['title'], meta['thumb_hook'], meta['vibe_keywords']
-    except:
-        title, thumb_hook, vibe_keywords = f"{keyword} 완벽 가이드", f"{keyword}\n알아보기", "lifestyle"
+    # Dummy links / Fake URLs cleanup
+    dummy_md_pattern = r'\[([^\]]+)\]\((?:https?:\/\/)?(?:www\.)?(?:example\.(?:com|org)|test\.com|yourlink\.com|sample\.com)[^\)]*\)'
+    final_text = re.sub(dummy_md_pattern, r'\1', final_text)
+    dummy_html_pattern = r'<a\s+[^>]*href=[\'"](?:https?:\/\/)?(?:www\.)?(?:example\.(?:com|org)|test\.com|yourlink\.com|sample\.com)[^\'"]*[\'"][^>]*>(.*?)<\/a>'
+    final_text = re.sub(dummy_html_pattern, r'\1', final_text)
 
     # Fetch Pixabay Image
     image_urls = []
@@ -250,12 +270,12 @@ def generate_post(keyword, products):
         url = f"https://pixabay.com/api/?key=57366919-c2774ae5199cc6a6cdb9a301d&q={urllib.parse.quote(vibe_keywords)}&image_type=photo&orientation=horizontal&per_page=5"
         r = requests.get(url, timeout=10)
         if r.status_code == 200:
-            data = r.json()
-            if data.get('hits'):
-                image_urls = [hit.get('largeImageURL', hit.get('webformatURL')) for hit in data['hits']]
+            p_data = r.json()
+            if p_data.get('hits'):
+                image_urls = [hit.get('largeImageURL', hit.get('webformatURL')) for hit in p_data['hits']]
     except: pass
 
-    # Replace VIBE image
+    # Replace VIBE image (개선: <br> 제거 및 ALT 태그 고도화)
     parts = final_text.split('[VIBE_IMAGE_HERE]')
     processed_text = parts[0]
     if len(parts) > 1:
@@ -263,7 +283,8 @@ def generate_post(keyword, products):
         if image_urls:
             v_path = download_vibe_image(image_urls[0], f"vibe_{int(time.time())}")
         if v_path:
-            processed_text += f"\n<br>\n![관련이미지]({{{{ '/' | append: '{v_path}' | relative_url }}}})\n<br>\n"
+            img_alt = f"{keyword} 관련 추천 제품 인포그래픽"
+            processed_text += f"\n\n![{img_alt}]({{{{ '/' | append: '{v_path}' | relative_url }}}})\n\n"
         processed_text += parts[1]
     
     # Generate Thumbnail
@@ -285,10 +306,30 @@ def generate_post(keyword, products):
     # Clean up any orphan link tags
     processed_text = re.sub(r'\[/?COUPANG_LINK_\d+\]', '', processed_text)
 
+    # 2번째 H2 앞에 중간 애드센스 삽입
+    ad_mid = """
+<div class="ad-slot-wrap" style="margin: 35px 0; text-align: center;">
+  <ins class="adsbygoogle"
+       style="display:block"
+       data-ad-client="ca-pub-2228289204702106"
+       data-ad-slot="5979106011"
+       data-ad-format="auto"
+       data-full-width-responsive="true"></ins>
+  <script>(adsbygoogle = window.adsbygoogle || []).push({});</script>
+</div>
+"""
+    h2_indices = [m.start() for m in re.finditer(r'(?m)^##\s+', processed_text)]
+    if len(h2_indices) >= 2:
+        insert_pos = h2_indices[1]
+        processed_text = processed_text[:insert_pos] + ad_mid + "\n\n" + processed_text[insert_pos:]
+    else:
+        # H2가 2개 미만이면 본문 절반 지점에 삽입
+        mid_idx = len(processed_text) // 2
+        processed_text = processed_text[:mid_idx] + "\n\n" + ad_mid + "\n\n" + processed_text[mid_idx:]
+
     ftc_text = '\n<p style="font-size: 12px; color: #999; text-align: center; margin-top: 40px; margin-bottom: 10px;">이 포스팅은 쿠팡 파트너스 활동의 일환으로, 이에 따른 일정액의 수수료를 제공받습니다.</p>\n'
-    ad_bottom = '<div class="manual-ad-container" style="margin: 30px 0; text-align: center;">\n<ins class="adsbygoogle" style="display:block" data-ad-client="ca-pub-2228289204702106" data-ad-slot="2231432699" data-ad-format="auto" data-full-width-responsive="true"></ins>\n<script>(adsbygoogle = window.adsbygoogle || []).push({});</script>\n</div>\n'
     
-    final_text = processed_text + ftc_text + ad_bottom
+    final_text = processed_text + ftc_text
     return title, final_text, thumb_rel_path
 
 def main():
@@ -360,7 +401,8 @@ def main():
             f.write(target_keyword + '\n')
             
         date_str = datetime.datetime.now().strftime('%Y-%m-%d')
-        safe_title = target_keyword.replace(' ', '-').replace('/', '-').replace('\\', '-').replace('\ufeff', '').lower()
+        clean_kw = re.sub(r'[^\w\s-]', '', target_keyword).strip()
+        safe_title = re.sub(r'[-\s]+', '-', clean_kw)
         filename = f'_posts/{date_str}-{safe_title}.md'
         os.makedirs('_posts', exist_ok=True)
         frontmatter = f"---\nlayout: post\ntitle: \"{title}\"\ndate: {date_str}\nimage: {thumb_path}\n---\n\n"
