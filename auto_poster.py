@@ -339,10 +339,11 @@ def generate_post(keyword, products):
 
 def main():
     history_file = 'used_keywords.txt'
-    used_keywords = set()
+    used_keywords_list = []
     if os.path.exists(history_file):
         with open(history_file, 'r', encoding='utf-8') as f:
-            used_keywords = set([line.strip() for line in f if line.strip()])
+            used_keywords_list = [line.strip() for line in f if line.strip()]
+    used_keywords_set = set(used_keywords_list)
 
     # 1. Load leaf categories from refined Coupang/Naver file
     seed_categories = []
@@ -366,7 +367,7 @@ def main():
             
         # Sort keywords: prioritize golden search volumes (1,000 ~ 50,000)
         # Filter out already used keywords
-        available_kws = [k for k in kw_metrics if k['keyword'] not in used_keywords]
+        available_kws = [k for k in kw_metrics if k['keyword'] not in used_keywords_set]
         if not available_kws:
             continue
             
@@ -384,10 +385,15 @@ def main():
         target_seed = seed
         break
             
+    # FIFO 자연 순환: 모든 키워드 풀이 1회 소진된 경우 가장 오래된 키워드부터 순환
     if not target_keyword:
-        # Ultimate fallback
-        target_seed = random.choice(seed_categories)
-        target_keyword = f"{target_seed} 추천"
+        print("ℹ️ 모든 키워드 풀 1회 소진 확인: 가장 오래전에 작성된 키워드부터 자연 순환(FIFO) 발동")
+        if used_keywords_list:
+            target_keyword = used_keywords_list[0]
+            target_seed = "인기 순환 픽"
+        else:
+            target_seed = random.choice(seed_categories)
+            target_keyword = f"{target_seed} 추천"
 
     print(f"Selected Golden Keyword: {target_keyword} (Seed: {target_seed})")
     
@@ -401,9 +407,12 @@ def main():
     title, post_content, thumb_path = generate_post(target_keyword, products)
     
     if post_content:
-        # Save keyword to history
-        with open(history_file, 'a', encoding='utf-8') as f:
-            f.write(target_keyword + '\n')
+        # Save keyword to history (FIFO: 사용한 키워드는 항상 최하단으로 갱신)
+        updated_used = [k for k in used_keywords_list if k != target_keyword]
+        updated_used.append(target_keyword)
+        with open(history_file, 'w', encoding='utf-8') as f:
+            for kw in updated_used:
+                f.write(f"{kw}\n")
             
         date_str = datetime.datetime.now().strftime('%Y-%m-%d')
         clean_kw = re.sub(r'[^\w\s-]', '', target_keyword).strip()
