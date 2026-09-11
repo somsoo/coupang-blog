@@ -256,7 +256,8 @@ def generate_post(keyword, products):
         vibe_keywords = "technology"
         final_text = draft
 
-    final_text = re.sub(r'(?i)^(?:#+\s*)?H[23]:\s*', '', final_text, flags=re.MULTILINE)
+    # H2, H3, H4 지시어 및 변형(콜론 유무, 공백) 완벽 클린업
+    final_text = re.sub(r'(?im)^(#+\s*)H[234][:\s.]*\s*', r'\1', final_text)
     final_text = re.sub(r'^---.*?---\s*', '', final_text, flags=re.DOTALL)
     # Dummy links / Fake URLs cleanup
     dummy_md_pattern = r'\[([^\]]+)\]\((?:https?:\/\/)?(?:www\.)?(?:example\.(?:com|org)|test\.com|yourlink\.com|sample\.com)[^\)]*\)'
