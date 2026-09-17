@@ -179,7 +179,7 @@ def generate_post(keyword, products):
 
     # ▶ [Pass 1] 타겟 분석 + 목차 + 고밀도 1차 본문 초안 작성 (1회 호출)
     print("  ▶ [Pass 1/3] 타겟 분석 및 고밀도 초안 작성 중...")
-    pass1_prompt = f"""당신은 실패 없는 현명한 가성비 소비를 연구하는 15년 차 베테랑 리빙·살림 큐레이터이자 수석 에디터입니다.
+    pass1_prompt = f"""당신은 실패 없는 현명한 가성비 소비를 연구하는 전문 쇼핑 큐레이터이자 수석 에디터입니다.
 주제 키워드: '{keyword}'
 
 아래 쿠팡 1~3위 추천 상품 정보를 참고하여 독자가 일상에서 겪는 결핍과 문제를 해결하는 1,500자 내외의 정보성 블로그 1차 초안을 작성하세요.
@@ -187,12 +187,16 @@ def generate_post(keyword, products):
 [쿠팡 1~3위 해결책 상품 정보]:
 {products_info}
 
-[작성 지침]
-1. 첫 문장은 독자의 현실적인 불편함과 돈 낭비의 위험에 깊이 공감하며 시작하세요.
-2. 전문 정보성 매거진 목차(H2 소제목 3개)를 구성하여 단계별 가이드를 제시하세요.
-3. '내가 써봤는데', '100% 수익 보장' 같은 가짜 경험담이나 과장 광고는 절대 금지합니다.
-4. 본문 서론 직후 단독 줄로 정확히 '[VIBE_IMAGE_HERE]' 라는 플레이스홀더를 1회만 삽입하세요.
-5. 글의 중반부 이후 문제 해결책으로 1~3위 상품을 소개하되, 각 상품 설명이 끝난 다음 줄에 단독 줄로 '[COUPANG_LINK_1]', '[COUPANG_LINK_2]', '[COUPANG_LINK_3]' 마커를 1회씩만 배치하세요.
+[작성 지침 및 구글 리뷰 시스템 필수 구조]
+1. 첫 문장은 독자의 현실적인 고민과 불필요한 지출 방지에 깊이 공감하며 시작하세요.
+2. 서론 직후 단독 줄로 정확히 '[VIBE_IMAGE_HERE]' 플레이스홀더를 1회만 삽입하세요.
+3. [3초 요약 박스]를 구성하여 1위 국민 표준픽, 2위 가성비 극대화픽, 3위 프리미엄 하이엔드픽의 핵심 정의를 제시하세요.
+4. [구매 전 필수 체크 기준 3가지]를 본문 전반부에 명시하세요 (안전 인증, 핵심 소재, 유지관리성).
+5. [핵심 스펙 6열 비교 테이블]을 마크다운 표(|---|)로 반드시 작성하세요:
+   | 포지셔닝 | 상품명 | 가격대 | 주요스펙/특징 | 추천대상 | 배송/보증 |
+6. 1~3위 모델별로 반드시 '👍 실제 체감 장점 2가지'와 구매 전 타협해야 할 '⚠️ 솔직한 단점 1가지(Pros & Cons)'를 명시하세요.
+7. 각 상품 설명이 끝난 다음 줄에 단독 줄로 '[COUPANG_LINK_1]', '[COUPANG_LINK_2]', '[COUPANG_LINK_3]' 마커를 1회씩 배치하세요.
+8. '15년 차 큐레이터' 같은 가짜 페르소나나 '내가 써봤는데' 같은 허위 경험담은 절대 금지합니다.
 """
     draft = generate_with_retry(pass1_prompt)
     time.sleep(1)
@@ -230,10 +234,11 @@ def generate_post(keyword, products):
 {products_info}
 
 [필수 배치 및 포맷 규칙]
-1. 번역투와 기계적 문체를 완전히 제거하고 한국인이 직접 쓴 것처럼 자연스럽게 작성하세요.
+1. 번역투와 기계적 문체, 가짜 페르소나("N년 차 큐레이터" 등)를 완전히 제거하고 객관적인 쇼핑 데이터 큐레이터 관점으로 작성하세요.
 2. 서론 직후 단독 줄로 '[VIBE_IMAGE_HERE]' 마커를 반드시 유지하세요.
-3. 1~3위 상품 설명 문단 직후 단독 줄로 '[COUPANG_LINK_1]', '[COUPANG_LINK_2]', '[COUPANG_LINK_3]' 마커를 1회씩 반드시 배치하세요.
-4. 마크다운 코드블록(```)으로 전체 본문을 감싸지 마세요.
+3. [3초 요약 박스], [구매 전 체크 기준 3가지], [핵심 스펙 6열 비교 테이블], [모델별 장점 2가지 + 단점 1가지(Pros & Cons)]를 생략하지 말고 완성형 마크다운으로 완벽히 살려내세요.
+4. 1~3위 상품 설명 문단 직후 단독 줄로 '[COUPANG_LINK_1]', '[COUPANG_LINK_2]', '[COUPANG_LINK_3]' 마커를 1회씩 반드시 배치하세요.
+5. 마크다운 코드블록(```)으로 전체 본문을 감싸지 마세요.
 
 반드시 다음 JSON 형식으로만 최종 답변하세요:
 {{
@@ -297,7 +302,7 @@ def generate_post(keyword, products):
         cta_html = f"""
 <div style="margin: 30px 0; padding: 20px; text-align: center; border: 1px solid #e5e7eb; border-radius: 12px; background-color: #fafafa; box-shadow: 0 4px 6px rgba(0,0,0,0.02);">
     <h3 style="color: #111; margin-bottom: 12px; font-weight: bold; font-size: 18px; word-break: keep-all;">💡 실시간 {idx}위 상품 확인하기</h3>
-    <a href="{p.get('productUrl')}" target="_blank" style="display: block; width: 100%; max-width: 320px; margin: 0 auto; padding: 16px 20px; box-sizing: border-box; background-color: #e52528; color: white; font-size: 17px; font-weight: bold; text-decoration: none; border-radius: 8px; box-shadow: 0 4px 6px rgba(229,37,40,0.3); word-break: keep-all;">🚀 제품 상세 및 후기 보러가기</a>
+    <a href="{p.get('productUrl')}" target="_blank" rel="nofollow sponsored noopener" style="display: block; width: 100%; max-width: 320px; margin: 0 auto; padding: 16px 20px; box-sizing: border-box; background-color: #e52528; color: white; font-size: 17px; font-weight: bold; text-decoration: none; border-radius: 8px; box-shadow: 0 4px 6px rgba(229,37,40,0.3); word-break: keep-all;">🚀 제품 상세 및 후기 보러가기</a>
 </div>
 """
         processed_text = processed_text.replace(placeholder, f"\n{cta_html}\n")
@@ -332,9 +337,11 @@ def generate_post(keyword, products):
         else:
             processed_text += "\n\n" + ad_mid
 
-    ftc_text = '\n<p style="font-size: 12px; color: #999; text-align: center; margin-top: 40px; margin-bottom: 10px;">이 포스팅은 쿠팡 파트너스 활동의 일환으로, 이에 따른 일정액의 수수료를 제공받습니다.</p>\n'
+    prominent_ftc = '''<div class="ftc-notice-box" style="margin: 20px 0 28px; padding: 14px 18px; border-left: 4px solid #e52528; background-color: #fef2f2; border-radius: 8px; font-size: 14px; color: #991b1b; font-weight: 500; line-height: 1.6;">
+  📢 <strong>공정위 고시 안내</strong>: 이 포스팅은 쿠팡 파트너스 활동의 일환으로, 이에 따른 일정액의 수수료를 제공받습니다. 본 블로그는 소비자의 합리적인 구매 결정을 위해 실사용자 빅데이터와 검증된 사양만을 객관적으로 큐레이션합니다.
+</div>'''
     
-    final_text = processed_text + ftc_text
+    final_text = prominent_ftc + "\n\n" + processed_text
     return title, final_text, thumb_rel_path
 
 def main():
